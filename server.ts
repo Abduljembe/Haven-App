@@ -3605,12 +3605,17 @@ async function startServer() {
       const lookingFor = (req.query.lookingFor as string || '').toLowerCase().trim();
       const realOnly = req.query.realOnly === 'true';
 
-      let profiles = Array.from(singlesProfiles.values());
-
-      // Filter by real registered users only if requested
-      if (realOnly) {
-        profiles = profiles.filter((p) => p.isRealUser);
-      }
+      let profiles = Array.from(singlesProfiles.values()).filter((p) => {
+        const isSample =
+          SEED_PROFILE_IDS.has(p.id) ||
+          p.origin === 'seed' ||
+          p.verificationBadge === 'community_sample' ||
+          !p.isRealUser ||
+          p.id.startsWith('sample-') ||
+          p.id.startsWith('seed-') ||
+          p.id.startsWith('single-');
+        return !isSample;
+      });
 
       // Filter by search query (name, city, bio, interests)
       if (search) {
