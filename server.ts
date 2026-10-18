@@ -3119,17 +3119,30 @@ async function startServer() {
 
           if (!existingUser.spaces.includes(roomId)) {
             existingUser.spaces.push(roomId);
-            saveUsersToDisk();
           }
+          if (!room.authorizedEmails) room.authorizedEmails = [];
+          if (!room.authorizedEmails.includes(normalizedEmail)) {
+            room.authorizedEmails.push(normalizedEmail);
+          }
+          invite.status = 'accepted';
+          saveUsersToDisk();
         } else {
           unregisteredEmails.push(normalizedEmail);
         }
 
-        // Always broadcast live invite notification across the platform so partner sees it in their chat
+        // Always broadcast live invite notification & auto-connect event
         io.emit('spouse-invite-notification', {
           spouseEmail: normalizedEmail,
           spouseId: existingUser?.id,
           spouseName: existingUser?.name || 'Partner',
+          invite,
+        });
+
+        io.emit('space-auto-connected', {
+          roomId,
+          email: normalizedEmail,
+          userId: existingUser?.id,
+          userName: existingUser?.name,
           invite,
         });
 
