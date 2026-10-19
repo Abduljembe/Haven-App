@@ -38,53 +38,7 @@ export function unmarkSpaceAsDeleted(roomId: string): void {
   }
 }
 
-export const DEFAULT_FRIEND_SPACES: SavedSpaceRecord[] = [
-  {
-    roomId: 'haven-friends-squad-hangout',
-    passkey: 'squad-hangout-pass',
-    spaceType: 'friends',
-    title: 'Best Friends Squad',
-    partnerOrGroupName: 'Best Friends Squad',
-    partnerOrGroupAvatar: '🎉',
-    myRole: 'member',
-    myName: 'You',
-    myAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    lastVisitedAt: Date.now() - 3600000 * 2,
-    unreadCount: 2,
-    lastMessageText: "Omar: Who's ready for movie watch party tonight? 🍿",
-    lastMessageTime: Date.now() - 3600000 * 2,
-  },
-  {
-    roomId: 'haven-friend-maya-bestie',
-    passkey: 'friend-maya-pass',
-    spaceType: 'friends',
-    title: 'Maya (Bestie)',
-    partnerOrGroupName: 'Maya (Bestie)',
-    partnerOrGroupAvatar: 'https://images.unsplash.com/photo-1494790108377-be9c29b29330?w=150&auto=format&fit=crop&q=80',
-    myRole: 'member',
-    myName: 'You',
-    myAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    lastVisitedAt: Date.now() - 3600000 * 5,
-    unreadCount: 1,
-    lastMessageText: "Sent you the playlist link! Let's listen together 🎶",
-    lastMessageTime: Date.now() - 3600000 * 5,
-  },
-  {
-    roomId: 'haven-friend-alex-rivera',
-    passkey: 'friend-alex-pass',
-    spaceType: 'friends',
-    title: 'Alex Rivera',
-    partnerOrGroupName: 'Alex Rivera',
-    partnerOrGroupAvatar: 'https://images.unsplash.com/photo-1507003211169-0a1dd7228f2d?w=150&auto=format&fit=crop&q=80',
-    myRole: 'member',
-    myName: 'You',
-    myAvatar: 'https://images.unsplash.com/photo-1535713875002-d1d0cf377fde?w=150&auto=format&fit=crop&q=80',
-    lastVisitedAt: Date.now() - 3600000 * 24,
-    unreadCount: 0,
-    lastMessageText: 'Great game of chess earlier! Rematch soon ♟️',
-    lastMessageTime: Date.now() - 3600000 * 24,
-  },
-];
+export const DEFAULT_FRIEND_SPACES: SavedSpaceRecord[] = [];
 
 /**
  * Get all previously joined spaces from local storage, sorted by most recently visited.

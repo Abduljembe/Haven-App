@@ -1,4 +1,5 @@
 import React, { useState } from 'react';
+import { performFactoryReset } from '../utils/authService';
 import {
   X,
   ArrowLeft,
@@ -1152,6 +1153,18 @@ export const SettingsModal: React.FC<SettingsModalProps> = ({
             >
               <LogOut className="w-4 h-4" />
               <span>Leave Current Space</span>
+            </button>
+
+            <button
+              onClick={async () => {
+                if (window.confirm('Are you sure you want to perform a Factory Reset? This will permanently delete all registered members, spouses, chats, and cached data so everyone starts from the beginning.')) {
+                  await performFactoryReset();
+                }
+              }}
+              className="w-full py-2.5 px-4 bg-rose-50 hover:bg-rose-100 text-rose-700 border border-rose-300 rounded-xl text-xs font-bold flex items-center justify-center gap-2 transition-colors cursor-pointer mt-3"
+            >
+              <Trash2 className="w-4 h-4" />
+              <span>🧹 Factory Reset & Start Fresh</span>
             </button>
           </div>
         </div>

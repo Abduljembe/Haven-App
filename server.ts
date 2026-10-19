@@ -2477,6 +2477,36 @@ async function startServer() {
     });
   });
 
+  // Factory Reset Endpoint: Delete all registered members and spaces so everyone starts from the beginning
+  app.post('/api/factory-reset', (req, res) => {
+    try {
+      users.clear();
+      rooms.clear();
+      invites = [];
+      voicemails = [];
+      singlesProfiles.clear();
+      activeSessions.clear();
+
+      const filesToReset = [USERS_FILE, STORAGE_FILE, INVITES_FILE, VOICEMAILS_FILE, SINGLES_FILE, SESSIONS_FILE];
+      for (const f of filesToReset) {
+        if (fs.existsSync(f)) {
+          try {
+            fs.unlinkSync(f);
+          } catch {}
+        }
+      }
+
+      console.log('[FactoryReset] All registered members, spouses, rooms, and invites have been permanently wiped.');
+      res.json({
+        success: true,
+        message: 'Factory reset successful. All registered members and spaces removed. Start fresh!',
+      });
+    } catch (err: any) {
+      console.error('Factory reset error:', err);
+      res.status(500).json({ error: 'Failed to perform factory reset' });
+    }
+  });
+
   // --- DATABASE & STORAGE INSPECTOR ENDPOINTS ---
 
   // Get summary of all database storage files
@@ -3821,6 +3851,36 @@ async function startServer() {
     } catch (err: any) {
       console.error('Error purging sample profiles:', err);
       res.status(500).json({ error: 'Failed to purge sample profiles' });
+    }
+  });
+
+  // Factory Reset Endpoint: Delete all registered members and spaces so everyone starts from the beginning
+  app.post('/api/factory-reset', (req, res) => {
+    try {
+      users.clear();
+      rooms.clear();
+      invites = [];
+      voicemails = [];
+      singlesProfiles.clear();
+      activeSessions.clear();
+
+      const filesToReset = [USERS_FILE, STORAGE_FILE, INVITES_FILE, VOICEMAILS_FILE, SINGLES_FILE, SESSIONS_FILE];
+      for (const f of filesToReset) {
+        if (fs.existsSync(f)) {
+          try {
+            fs.unlinkSync(f);
+          } catch {}
+        }
+      }
+
+      console.log('[FactoryReset] All registered members, spouses, rooms, and invites have been permanently wiped.');
+      res.json({
+        success: true,
+        message: 'Factory reset successful. All registered members and spaces removed. Start fresh!',
+      });
+    } catch (err: any) {
+      console.error('Factory reset error:', err);
+      res.status(500).json({ error: 'Failed to perform factory reset' });
     }
   });
 

@@ -13,6 +13,7 @@ import {
   Music,
   Film,
   Gamepad2,
+  Mail,
   Heart,
   Palette,
   Lock,
@@ -160,6 +161,9 @@ export interface WhatsAppLayoutProps {
   onInviteSpouse: () => void;
   pendingInviteCount?: number;
   onAcceptPendingInvite?: () => void;
+  pendingInvites?: any[];
+  onAcceptInvite?: (invite: any) => void;
+  onDeclineInvite?: (inviteId: string) => void;
 
   // Children: The Main Chat Workspace (<ChatArea>)
   children: React.ReactNode;
@@ -245,6 +249,9 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
   onInviteSpouse,
   pendingInviteCount = 0,
   onAcceptPendingInvite,
+  pendingInvites = [],
+  onAcceptInvite,
+  onDeclineInvite,
   children,
 }) => {
   const isDark = colorMode === 'dark';
@@ -272,6 +279,7 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
 
   // WhatsApp Menu Dropdown
   const [showWhatsAppMenu, setShowWhatsAppMenu] = useState(false);
+  const [isInvitesModalOpen, setIsInvitesModalOpen] = useState(false);
 
   // New Chat Modal & Quick Friends Flow
   const [isNewChatOpen, setIsNewChatOpen] = useState(false);
@@ -880,6 +888,21 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
               <span className="absolute -top-1 -right-1 text-[9px] bg-emerald-500/20 text-emerald-400 font-bold px-1 rounded-full">
                 21+
               </span>
+            </button>
+
+            {/* Pending Invites Hub Button */}
+            <button
+              type="button"
+              onClick={() => setIsInvitesModalOpen(true)}
+              className="w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer relative hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400"
+              title="Pending Invitations Hub"
+            >
+              <Mail className="w-5 h-5 text-rose-400" />
+              {pendingInvites && pendingInvites.filter((i) => i.status === 'pending').length > 0 && (
+                <span className="absolute top-1 right-1 px-1.5 py-0.5 bg-rose-500 text-white text-[9px] font-bold rounded-full animate-bounce">
+                  {pendingInvites.filter((i) => i.status === 'pending').length}
+                </span>
+              )}
             </button>
 
             {/* Tab: Couple Games Lounge */}
@@ -3613,6 +3636,84 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
                   </>
                 )}
               </button>
+            </div>
+          </div>
+        </div>
+      )}
+
+      {/* Pending Invites Hub Modal */}
+      {isInvitesModalOpen && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center bg-black/60 backdrop-blur-sm p-4 animate-in fade-in">
+          <div className="w-full max-w-md rounded-3xl bg-slate-900 border border-slate-800 text-white p-6 shadow-2xl space-y-5">
+            <div className="flex items-center justify-between">
+              <div className="flex items-center gap-2.5">
+                <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center font-bold">
+                  💌
+                </div>
+                <div>
+                  <h3 className="text-base font-bold">Pending Invitations Hub</h3>
+                  <p className="text-xs text-slate-400">Accept or decline your space & friend invites</p>
+                </div>
+              </div>
+              <button
+                type="button"
+                onClick={() => setIsInvitesModalOpen(false)}
+                className="w-8 h-8 rounded-full bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-white flex items-center justify-center transition cursor-pointer"
+              >
+                ✕
+              </button>
+            </div>
+
+            <div className="space-y-3 max-h-[60vh] overflow-y-auto pr-1">
+              {!pendingInvites || pendingInvites.filter((i) => i.status === 'pending').length === 0 ? (
+                <div className="text-center py-12 text-slate-400 space-y-2">
+                  <span className="text-4xl block">📭</span>
+                  <p className="text-sm font-semibold">No pending invitations right now.</p>
+                  <p className="text-xs text-slate-500">When partners or friends invite you to a sanctuary, they will appear here instantly.</p>
+                </div>
+              ) : (
+                pendingInvites.filter((i) => i.status === 'pending').map((inv) => (
+                  <div key={inv.id} className="p-4 rounded-2xl bg-slate-800/80 border border-slate-700/80 space-y-3 shadow-md">
+                    <div className="flex items-start justify-between gap-2">
+                      <div>
+                        <span className="text-[10px] font-bold uppercase tracking-wider px-2 py-0.5 rounded-full bg-rose-500/20 text-rose-300">
+                          {inv.spaceType === 'friends' ? '👥 Squad Friend Invite' : '💖 Couple Sanctuary Invite'}
+                        </span>
+                        <h4 className="text-sm font-bold mt-1 text-white">{inv.spaceName}</h4>
+                        <p className="text-xs text-slate-300 mt-0.5">Invited by <strong className="text-rose-300">{inv.senderName}</strong></p>
+                      </div>
+                    </div>
+
+                    {inv.message && (
+                      <p className="text-xs text-slate-400 bg-slate-900/60 p-2.5 rounded-xl border border-slate-800 italic">
+                        "{inv.message}"
+                      </p>
+                    )}
+
+                    <div className="flex items-center gap-2 pt-1">
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onAcceptInvite) onAcceptInvite(inv);
+                          setIsInvitesModalOpen(false);
+                        }}
+                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-lg shadow-rose-900/30 active:scale-95 cursor-pointer transition"
+                      >
+                        ✓ Accept & Join
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => {
+                          if (onDeclineInvite) onDeclineInvite(inv.id);
+                        }}
+                        className="py-2.5 px-4 rounded-xl bg-slate-700 hover:bg-slate-600 text-slate-200 font-bold text-xs flex items-center justify-center gap-1 active:scale-95 cursor-pointer transition"
+                      >
+                        ✕ Decline
+                      </button>
+                    </div>
+                  </div>
+                ))
+              )}
             </div>
           </div>
         </div>

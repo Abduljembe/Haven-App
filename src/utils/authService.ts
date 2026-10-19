@@ -385,3 +385,14 @@ export async function trackUserProfile(params: {
     // Non-blocking sync
   }
 }
+
+export async function performFactoryReset(): Promise<void> {
+  try {
+    await fetch('/api/factory-reset', { method: 'POST' });
+  } catch {}
+  try {
+    localStorage.clear();
+  } catch {}
+  clearAuthSession();
+  window.location.reload();
+}

@@ -3589,6 +3589,9 @@ export default function App() {
           const inv = pendingInvites.find((i) => i.status === 'pending' && i.roomId !== config.roomId) || pendingInvites[0];
           if (inv) handleAcceptInvite(inv);
         }}
+        pendingInvites={pendingInvites}
+        onAcceptInvite={handleAcceptInvite}
+        onDeclineInvite={(id) => setPendingInvites((prev) => prev.filter((i) => i.id !== id))}
       >
         <ChatArea
           messages={messages}
