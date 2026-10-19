@@ -711,77 +711,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         </div>
       )}
 
-      {/* Sticky Top Incoming Invite Banner (Real-time partner invitation in chat area) */}
-      {pendingSpouseInvite && (
-        <div
-          id="sticky-inchat-spouse-invite"
-          className={`z-25 mx-2 sm:mx-3 my-2 p-3 sm:p-4 rounded-2xl shadow-xl border-2 animate-in slide-in-from-top-2 duration-300 ${
-            pendingSpouseInvite.spaceType === 'friends'
-              ? 'bg-gradient-to-r from-indigo-950/95 via-purple-900/95 to-slate-900 border-indigo-400/80 text-white shadow-indigo-500/20'
-              : 'bg-gradient-to-r from-rose-950/95 via-pink-900/95 to-slate-900 border-rose-400/80 text-white shadow-rose-500/20'
-          }`}
-        >
-          <div className="flex items-center justify-between gap-2 mb-2">
-            <div className="flex items-center gap-2">
-              <span className="flex h-2 w-2 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2 w-2 bg-emerald-500" />
-              </span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1">
-                {pendingSpouseInvite.spaceType === 'friends' ? <Users className="w-3 h-3" /> : <Heart className="w-3 h-3 fill-rose-400 text-rose-400" />}
-                Incoming Connection Invitation
-              </span>
-            </div>
-            {onDismissSpouseInvite && (
-              <button
-                type="button"
-                onClick={() => onDismissSpouseInvite(pendingSpouseInvite.id)}
-                className="text-white/60 hover:text-white p-1 rounded-full hover:bg-white/10 transition cursor-pointer"
-                title="Dismiss"
-              >
-                <X className="w-4 h-4" />
-              </button>
-            )}
-          </div>
 
-          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-full bg-white/15 border border-white/30 flex items-center justify-center text-lg shrink-0 font-bold">
-                {pendingSpouseInvite.spaceType === 'friends' ? '🎉' : '💕'}
-              </div>
-              <div className="min-w-0">
-                <p className="text-xs sm:text-sm font-semibold text-white">
-                  <strong>{pendingSpouseInvite.senderName}</strong> invited you to connect:
-                </p>
-                <p className="text-xs text-emerald-200 truncate">
-                  "{pendingSpouseInvite.spaceName}" {pendingSpouseInvite.message ? `• ${pendingSpouseInvite.message}` : ''}
-                </p>
-              </div>
-            </div>
-
-            <div className="flex items-center gap-2 shrink-0">
-              <button
-                type="button"
-                id="btn-sticky-accept-invite"
-                onClick={() => onAcceptSpouseInvite && onAcceptSpouseInvite(pendingSpouseInvite)}
-                className="px-4 py-2 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-md flex items-center gap-1.5 transition active:scale-95 cursor-pointer"
-              >
-                <CheckCircle2 className="w-4 h-4" />
-                <span>Accept & Connect</span>
-              </button>
-              {onDismissSpouseInvite && (
-                <button
-                  type="button"
-                  onClick={() => onDismissSpouseInvite(pendingSpouseInvite.id)}
-                  className="px-3 py-2 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-                >
-                  Decline
-                </button>
-              )}
-            </div>
-          </div>
-        </div>
-      )}
 
       {/* Haven Message Selection Action Bar */}
       {highlightedMessage && (
@@ -942,78 +872,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         </div>
 
-        {/* Special Incoming Spouse or Friends Sanctuary/Squad Invitation Banner */}
-        {pendingSpouseInvite && (
-          <div
-            id="card-inchat-spouse-invite"
-            className={`my-4 mx-auto max-w-lg p-5 rounded-3xl text-white animate-in zoom-in-95 duration-300 border-2 shadow-2xl ${
-              pendingSpouseInvite.spaceType === 'friends'
-                ? 'bg-gradient-to-br from-indigo-950/95 via-purple-950/90 to-slate-900 border-indigo-500 shadow-indigo-500/30'
-                : 'bg-gradient-to-br from-rose-950/95 via-pink-950/90 to-slate-900 border-rose-500 shadow-rose-500/30'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2 text-xs font-bold uppercase tracking-wider">
-              {pendingSpouseInvite.spaceType === 'friends' ? (
-                <>
-                  <Users className="w-4 h-4 text-indigo-400 animate-bounce" />
-                  <span className="text-indigo-300">Squad Hangout Invitation</span>
-                </>
-              ) : (
-                <>
-                  <Heart className="w-4 h-4 fill-rose-500 text-rose-500 animate-bounce" />
-                  <span className="text-rose-300">Special Sanctuary Invitation For You</span>
-                </>
-              )}
-            </div>
-            <h3 className="font-serif text-lg font-bold text-white mb-1.5">
-              {pendingSpouseInvite.spaceType === 'friends'
-                ? `${pendingSpouseInvite.senderName} invited you to join their Squad hangout!`
-                : `${pendingSpouseInvite.senderName} has invited you to enter your private couple sanctuary!`}
-            </h3>
-            <p className={`text-xs mb-3 ${pendingSpouseInvite.spaceType === 'friends' ? 'text-indigo-200/90' : 'text-rose-200/90'}`}>
-              Space: <strong className="text-white">"{pendingSpouseInvite.spaceName}"</strong>
-            </p>
-            {pendingSpouseInvite.message && (
-              <div className="p-3 rounded-2xl bg-white/10 backdrop-blur-md border border-white/15 text-xs text-slate-100 italic mb-4">
-                "{pendingSpouseInvite.message}"
-              </div>
-            )}
-            <div className="flex items-center gap-2">
-              <button
-                type="button"
-                id="btn-inchat-accept-invite"
-                onClick={() => onAcceptSpouseInvite && onAcceptSpouseInvite(pendingSpouseInvite)}
-                className={`flex-1 py-3 px-4 rounded-xl text-white font-bold text-xs shadow-lg active:scale-95 transition cursor-pointer flex items-center justify-center gap-2 ${
-                  pendingSpouseInvite.spaceType === 'friends'
-                    ? 'bg-gradient-to-r from-indigo-500 to-purple-600 hover:opacity-95 shadow-indigo-500/30'
-                    : 'bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-95 shadow-rose-500/30'
-                }`}
-              >
-                {pendingSpouseInvite.spaceType === 'friends' ? (
-                  <>
-                    <Users className="w-4 h-4" />
-                    <span>Accept & Join Squad 🎉</span>
-                  </>
-                ) : (
-                  <>
-                    <Heart className="w-4 h-4 fill-white" />
-                    <span>Accept & Step In Together 💕</span>
-                  </>
-                )}
-              </button>
-              {onDismissSpouseInvite && (
-                <button
-                  type="button"
-                  id="btn-inchat-dismiss-invite"
-                  onClick={() => onDismissSpouseInvite(pendingSpouseInvite.id)}
-                  className="py-3 px-4 rounded-xl bg-slate-800/80 hover:bg-slate-700 text-slate-300 text-xs font-semibold transition cursor-pointer"
-                >
-                  Later
-                </button>
-              )}
-            </div>
-          </div>
-        )}
+
 
         {/* In-Chat Friends Invitation Card when squad has 1 or fewer other members */}
         {spaceType === 'friends' && roomMembers.length <= 1 && onOpenInviteSpouse && (
@@ -1705,58 +1564,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
           </div>
         )}
 
-        {/* In-Chat Real-Time Partner Sanctuary / Friends Invitation Card at conversation bottom */}
-        {pendingSpouseInvite && (
-          <div
-            id="inchat-conversation-invite-card"
-            className={`my-3 p-4 sm:p-5 rounded-2xl shadow-xl border-2 animate-in slide-in-from-bottom-3 duration-300 ${
-              pendingSpouseInvite.spaceType === 'friends'
-                ? 'bg-gradient-to-r from-indigo-950/95 via-purple-900/95 to-slate-900 border-indigo-400 text-white shadow-indigo-500/20'
-                : 'bg-gradient-to-r from-rose-950/95 via-pink-900/95 to-slate-900 border-rose-400 text-white shadow-rose-500/20'
-            }`}
-          >
-            <div className="flex items-center gap-2 mb-2">
-              <span className="flex h-2.5 w-2.5 relative">
-                <span className="animate-ping absolute inline-flex h-full w-full rounded-full bg-emerald-400 opacity-75" />
-                <span className="relative inline-flex rounded-full h-2.5 w-2.5 bg-emerald-500" />
-              </span>
-              <span className="text-[11px] font-bold uppercase tracking-wider text-emerald-400 flex items-center gap-1.5">
-                {pendingSpouseInvite.spaceType === 'friends' ? <Users className="w-3.5 h-3.5" /> : <Heart className="w-3.5 h-3.5 fill-rose-400 text-rose-400" />}
-                Live Connection Invitation For You
-              </span>
-            </div>
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-              <div>
-                <p className="text-sm font-semibold text-white">
-                  <strong>{pendingSpouseInvite.senderName}</strong> invited you to connect:
-                </p>
-                <p className="text-xs text-pink-200 mt-0.5">
-                  "{pendingSpouseInvite.spaceName}" {pendingSpouseInvite.message ? `• ${pendingSpouseInvite.message}` : ''}
-                </p>
-              </div>
-              <div className="flex items-center gap-2">
-                <button
-                  type="button"
-                  id="btn-conversation-accept-invite"
-                  onClick={() => onAcceptSpouseInvite && onAcceptSpouseInvite(pendingSpouseInvite)}
-                  className="px-4 py-2.5 rounded-xl text-xs font-bold bg-emerald-500 hover:bg-emerald-400 text-slate-950 shadow-lg flex items-center gap-1.5 active:scale-95 transition cursor-pointer"
-                >
-                  <CheckCircle2 className="w-4 h-4" />
-                  <span>Accept & Connect Now</span>
-                </button>
-                {onDismissSpouseInvite && (
-                  <button
-                    type="button"
-                    onClick={() => onDismissSpouseInvite(pendingSpouseInvite.id)}
-                    className="px-3 py-2.5 rounded-xl text-xs font-semibold bg-white/10 hover:bg-white/20 text-white transition cursor-pointer"
-                  >
-                    Dismiss
-                  </button>
-                )}
-              </div>
-            </div>
-          </div>
-        )}
+
 
         <div ref={messagesEndRef} />
         </div>

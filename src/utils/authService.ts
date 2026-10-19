@@ -391,8 +391,14 @@ export async function performFactoryReset(): Promise<void> {
     await fetch('/api/factory-reset', { method: 'POST' });
   } catch {}
   try {
-    localStorage.clear();
+    const keys: string[] = [];
+    for (let i = 0; i < localStorage.length; i++) {
+      const k = localStorage.key(i);
+      if (k) keys.push(k);
+    }
+    keys.forEach((k) => localStorage.removeItem(k));
+    sessionStorage.clear();
   } catch {}
   clearAuthSession();
-  window.location.reload();
+  window.location.href = window.location.origin + '/?fresh=1';
 }
