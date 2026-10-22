@@ -3222,9 +3222,12 @@ async function startServer() {
   });
 
   // Get all pending invitations for a specific email or user
+  // Get invitations for a specific email or user
   app.get('/api/space/invites', (req, res) => {
     const email = typeof req.query.email === 'string' ? req.query.email.trim().toLowerCase() : '';
     const userId = typeof req.query.userId === 'string' ? req.query.userId.trim() : '';
+    const includeHistory = req.query.includeHistory === 'true';
+
     if (!email && !userId) {
       return res.status(400).json({ error: 'Email or userId parameter is required' });
     }
@@ -3235,16 +3238,66 @@ async function startServer() {
       if (u) userEmail = u.email.toLowerCase();
     }
 
-    const pending = invites.filter(
+    const filtered = invites.filter(
       (inv) =>
-        inv.status === 'pending' &&
         ((userEmail && inv.spouseEmail.toLowerCase().trim() === userEmail) ||
-         (userId && (inv as any).spouseId === userId))
+         (userId && (inv as any).spouseId === userId)) &&
+        (includeHistory ? true : inv.status === 'pending')
     );
 
     return res.json({
       success: true,
-      invites: pending,
+      invites: filtered,
+    });
+  });
+
+  // Decline a space invite
+  app.post('/api/space/decline-invite', (req, res) => {
+    const { inviteId, userEmail, userName } = req.body;
+    if (!inviteId) return res.status(400).json({ error: 'Missing inviteId' });
+
+    const invite = invites.find((inv) => inv.id === inviteId);
+    if (!invite) return res.status(404).json({ error: 'Invite not found' });
+
+    invite.status = 'declined';
+    saveInvitesToDisk();
+
+    // Broadcast that the invite was declined
+    io.emit('spouse-invite-declined', {
+      inviteId: invite.id,
+      roomId: invite.roomId,
+      spouseEmail: invite.spouseEmail,
+      senderName: invite.senderName,
+      spaceName: invite.spaceName,
+      declinedBy: userEmail || invite.spouseEmail,
+      declinedByName: userName || 'Partner/Friend',
+      timestamp: Date.now(),
+    });
+
+    // Inject system message into room/sender inbox
+    const room = rooms.get(invite.roomId);
+    if (room) {
+      if (!room.messages) room.messages = [];
+      const sysMsg: EncryptedMessagePayload = {
+        id: `msg_decline_${Date.now()}`,
+        roomId: invite.roomId,
+        senderId: 'system',
+        senderName: 'Haven System',
+        type: 'text',
+        ciphertext: btoa(`⚠️ Invitation to "${invite.spaceName}" was declined by ${userName || userEmail || 'recipient'}.`),
+        iv: 'system',
+        timestamp: Date.now(),
+      };
+      room.messages.push(sysMsg);
+      if (room.messages.length > 25000) room.messages.shift();
+      saveRoomsToDisk();
+      io.to(invite.roomId).emit('encrypted-message', sysMsg);
+    }
+
+    return res.json({
+      success: true,
+      invite,
+      message: 'Invite declined successfully.',
     });
   });
 

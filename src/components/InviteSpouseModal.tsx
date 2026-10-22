@@ -24,6 +24,8 @@ import {
   lookupUserByEmail,
   getRoomInvites,
   cancelSpaceInvite,
+  getInvitesForEmail,
+  declineSpaceInvite,
 } from '../utils/authService';
 
 export interface InviteSpouseModalProps {
@@ -65,6 +67,9 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
   const [friendsInput, setFriendsInput] = useState('');
   const [friendEmailList, setFriendEmailList] = useState<string[]>([]);
 
+  // Inbox and history of invites
+  const [inboxInvites, setInboxInvites] = useState<SpaceEmailInvite[]>(pendingInvites);
+
   // Existing active invite for couple space
   const [activeCoupleInvite, setActiveCoupleInvite] = useState<SpaceEmailInvite | null>(null);
   const [isLoadingExistingInvite, setIsLoadingExistingInvite] = useState(false);
@@ -94,6 +99,24 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
   } | null>(null);
 
   const [copiedLink, setCopiedLink] = useState(false);
+
+  // Fetch full invite history (pending, accepted, declined) on modal open
+  useEffect(() => {
+    if (!isOpen) return;
+
+    let isMounted = true;
+    getInvitesForEmail(senderEmail, undefined, true)
+      .then((res) => {
+        if (isMounted && Array.isArray(res)) {
+          setInboxInvites(res);
+        }
+      })
+      .catch(() => {});
+
+    return () => {
+      isMounted = false;
+    };
+  }, [isOpen, senderEmail]);
 
   // Fetch active invite for couple space on modal open
   useEffect(() => {
@@ -188,6 +211,18 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
 
   const removeFriendEmail = (emailToRemove: string) => {
     setFriendEmailList((prev) => prev.filter((e) => e !== emailToRemove));
+  };
+
+  const handleDecline = async (inviteId: string) => {
+    try {
+      await declineSpaceInvite(inviteId, senderEmail, senderName);
+      setInboxInvites((prev) =>
+        prev.map((i) => (i.id === inviteId ? { ...i, status: 'declined' as const } : i))
+      );
+      if (onDeclineInvite) onDeclineInvite(inviteId);
+    } catch (err: any) {
+      setError(err.message || 'Failed to decline invite');
+    }
   };
 
   const handleRevokeCoupleInvite = async () => {
@@ -400,10 +435,10 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
                 : 'border-transparent text-slate-500 hover:text-slate-800'
             }`}
           >
-            <span>📥 Pending Invites Inbox</span>
-            {pendingInvites && pendingInvites.filter((i) => i.status === 'pending').length > 0 && (
+            <span>📥 Invites Inbox & History</span>
+            {inboxInvites && inboxInvites.filter((i) => i.status === 'pending').length > 0 && (
               <span className="w-4 h-4 rounded-full bg-rose-600 text-white text-[10px] font-bold flex items-center justify-center">
-                {pendingInvites.filter((i) => i.status === 'pending').length}
+                {inboxInvites.filter((i) => i.status === 'pending').length}
               </span>
             )}
           </button>
@@ -412,14 +447,14 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
         <div className="p-6">
           {modalTab === 'inbox' && (
             <div className="space-y-3.5 max-h-[60vh] overflow-y-auto pr-1">
-              {!pendingInvites || pendingInvites.filter((i) => i.status === 'pending').length === 0 ? (
+              {!inboxInvites || inboxInvites.length === 0 ? (
                 <div className="text-center py-12 text-slate-400 space-y-2">
                   <span className="text-4xl block">📭</span>
-                  <p className="text-sm font-semibold text-slate-700">No pending invitations right now.</p>
-                  <p className="text-xs text-slate-500">When partners or friends invite you to a sanctuary, they will appear here instantly.</p>
+                  <p className="text-sm font-semibold text-slate-700">No invitations in your inbox.</p>
+                  <p className="text-xs text-slate-500">When partners or friends invite you, they will appear here with history.</p>
                 </div>
               ) : (
-                pendingInvites.filter((i) => i.status === 'pending').map((inv) => (
+                inboxInvites.map((inv) => (
                   <div key={inv.id} className="p-4 rounded-2xl bg-slate-50 border border-slate-200 space-y-3 shadow-sm">
                     <div className="flex items-start justify-between gap-2">
                       <div>
@@ -429,6 +464,15 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
                         <h4 className="text-sm font-bold mt-1 text-slate-900">{inv.spaceName}</h4>
                         <p className="text-xs text-slate-600 mt-0.5">Invited by <strong className="text-rose-600">{inv.senderName}</strong></p>
                       </div>
+                      <span className={`px-2 py-0.5 rounded-full text-[10px] font-bold ${
+                        inv.status === 'accepted'
+                          ? 'bg-emerald-100 text-emerald-800 border border-emerald-200'
+                          : inv.status === 'declined'
+                          ? 'bg-rose-100 text-rose-800 border border-rose-200'
+                          : 'bg-amber-100 text-amber-800 border border-amber-200'
+                      }`}>
+                        {inv.status === 'accepted' ? 'Accepted' : inv.status === 'declined' ? 'Declined' : 'Pending'}
+                      </span>
                     </div>
 
                     {inv.message && (
@@ -437,27 +481,27 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
                       </p>
                     )}
 
-                    <div className="flex items-center gap-2 pt-1">
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onAcceptInvite) onAcceptInvite(inv);
-                          onClose();
-                        }}
-                        className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer transition"
-                      >
-                        ✓ Accept & Join
-                      </button>
-                      <button
-                        type="button"
-                        onClick={() => {
-                          if (onDeclineInvite) onDeclineInvite(inv.id);
-                        }}
-                        className="py-2.5 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-95 cursor-pointer transition"
-                      >
-                        ✕ Decline
-                      </button>
-                    </div>
+                    {inv.status === 'pending' && (
+                      <div className="flex items-center gap-2 pt-1">
+                        <button
+                          type="button"
+                          onClick={() => {
+                            if (onAcceptInvite) onAcceptInvite(inv);
+                            onClose();
+                          }}
+                          className="flex-1 py-2.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white font-bold text-xs flex items-center justify-center gap-1.5 shadow-md active:scale-95 cursor-pointer transition"
+                        >
+                          ✓ Accept & Join
+                        </button>
+                        <button
+                          type="button"
+                          onClick={() => handleDecline(inv.id)}
+                          className="py-2.5 px-4 rounded-xl bg-slate-200 hover:bg-slate-300 text-slate-700 font-bold text-xs flex items-center justify-center gap-1 active:scale-95 cursor-pointer transition"
+                        >
+                          ✕ Decline
+                        </button>
+                      </div>
+                    )}
                   </div>
                 ))
               )}

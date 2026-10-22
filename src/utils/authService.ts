@@ -290,13 +290,14 @@ export async function inviteSpouseByEmail(params: {
   };
 }
 
-export async function getInvitesForEmail(email?: string, userId?: string): Promise<SpaceEmailInvite[]> {
+export async function getInvitesForEmail(email?: string, userId?: string, includeHistory = false): Promise<SpaceEmailInvite[]> {
   if (!email && !userId) return [];
   let serverInvites: SpaceEmailInvite[] = [];
   try {
     const params = new URLSearchParams();
     if (email) params.append('email', email.trim().toLowerCase());
     if (userId) params.append('userId', userId);
+    if (includeHistory) params.append('includeHistory', 'true');
     const res = await fetch(`/api/space/invites?${params.toString()}`);
     if (res.ok) {
       const data = await safeJsonParse(res);
@@ -310,12 +311,26 @@ export async function getInvitesForEmail(email?: string, userId?: string): Promi
     const combined = [...serverInvites, ...localInvites];
     const map = new Map<string, SpaceEmailInvite>();
     for (const inv of combined) {
+      if (!includeHistory && inv.status !== 'pending') continue;
       map.set(inv.id, inv);
     }
     return Array.from(map.values());
   } catch {
     return serverInvites;
   }
+}
+
+export async function declineSpaceInvite(inviteId: string, userEmail?: string, userName?: string) {
+  const res = await fetch('/api/space/decline-invite', {
+    method: 'POST',
+    headers: { 'Content-Type': 'application/json' },
+    body: JSON.stringify({ inviteId, userEmail, userName }),
+  });
+  const data = await safeJsonParse(res);
+  if (!res.ok) {
+    throw new Error(data.error || 'Failed to decline invite');
+  }
+  return data;
 }
 
 export async function lookupUserByEmail(query: string): Promise<{ exists: boolean; user?: { id: string; name: string; email: string; avatar?: string } }> {
