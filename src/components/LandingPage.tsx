@@ -484,31 +484,7 @@ export const LandingPage: React.FC<LandingPageProps> = ({
         </button>
       </div>
 
-      {/* Pending Spouse Invitations Alert Banner */}
-      {pendingInvites && pendingInvites.length > 0 && (
-        <div className="relative z-40 bg-gradient-to-r from-rose-600 via-pink-600 to-indigo-700 text-white py-3.5 px-4 shadow-xl">
-          <div className="max-w-6xl mx-auto flex flex-col sm:flex-row items-center justify-between gap-3 text-xs">
-            <div className="flex items-center gap-3">
-              <span className="p-2 rounded-xl bg-white/20 shadow-inner">
-                <Heart className="w-4 h-4 fill-white" />
-              </span>
-              <span>
-                <strong>Spouse Sanctuary Invitation Pending!</strong>{' '}
-                <span className="font-semibold text-rose-100">{pendingInvites[0].senderName}</span> has invited you to enter your private couple sanctuary "{pendingInvites[0].spaceName}".
-              </span>
-            </div>
-            <button
-              type="button"
-              id="btn-banner-accept-invite"
-              onClick={() => onAcceptInvite(pendingInvites[0])}
-              className="py-2 px-5 rounded-xl bg-white text-rose-700 font-bold hover:bg-rose-50 transition shadow-md active:scale-95 cursor-pointer whitespace-nowrap flex items-center gap-1.5 text-xs"
-            >
-              <span>Accept & Step Inside</span>
-              <ArrowRight className="w-3.5 h-3.5" />
-            </button>
-          </div>
-        </div>
-      )}
+
 
       {/* Main Hero Section */}
       <section className="relative z-10 pt-16 sm:pt-24 pb-16 px-4 sm:px-6">
