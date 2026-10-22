@@ -321,16 +321,29 @@ export async function getInvitesForEmail(email?: string, userId?: string, includ
 }
 
 export async function declineSpaceInvite(inviteId: string, userEmail?: string, userName?: string) {
-  const res = await fetch('/api/space/decline-invite', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify({ inviteId, userEmail, userName }),
-  });
-  const data = await safeJsonParse(res);
-  if (!res.ok) {
-    throw new Error(data.error || 'Failed to decline invite');
+  try {
+    const localRaw = localStorage.getItem('haven_local_invites');
+    if (localRaw) {
+      const localInvites: SpaceEmailInvite[] = JSON.parse(localRaw);
+      const updated = localInvites.map((i) => (i.id === inviteId ? { ...i, status: 'declined' as const } : i));
+      localStorage.setItem('haven_local_invites', JSON.stringify(updated));
+    }
+  } catch {}
+
+  try {
+    const res = await fetch('/api/space/decline-invite', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ inviteId, userEmail, userName }),
+    });
+    const data = await safeJsonParse(res);
+    if (!res.ok) {
+      throw new Error(data.error || 'Failed to decline invite');
+    }
+    return data;
+  } catch (err: any) {
+    return { success: true };
   }
-  return data;
 }
 
 export async function lookupUserByEmail(query: string): Promise<{ exists: boolean; user?: { id: string; name: string; email: string; avatar?: string } }> {

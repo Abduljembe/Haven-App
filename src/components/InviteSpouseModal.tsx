@@ -26,6 +26,7 @@ import {
   cancelSpaceInvite,
   getInvitesForEmail,
   declineSpaceInvite,
+  getStoredAuthUser,
 } from '../utils/authService';
 
 export interface InviteSpouseModalProps {
@@ -105,7 +106,11 @@ export const InviteSpouseModal: React.FC<InviteSpouseModalProps> = ({
     if (!isOpen) return;
 
     let isMounted = true;
-    getInvitesForEmail(senderEmail, undefined, true)
+    const authUser = getStoredAuthUser();
+    const userEmail = authUser?.email || senderEmail;
+    const userId = authUser?.id;
+
+    getInvitesForEmail(userEmail, userId, true)
       .then((res) => {
         if (isMounted && Array.isArray(res)) {
           setInboxInvites(res);
