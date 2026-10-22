@@ -907,36 +907,7 @@ export const ChatArea: React.FC<ChatAreaProps> = ({
         )}
 
         {/* In-Chat Spouse Invitation Card when Partner hasn't joined yet */}
-        {spaceType === 'couple' && !partner && onOpenInviteSpouse && (
-          <div
-            id="card-inchat-invite-spouse"
-            className="my-3 mx-auto max-w-lg p-4 rounded-3xl bg-slate-900/90 border border-rose-500/40 shadow-xl text-slate-100 flex flex-col sm:flex-row items-center justify-between gap-3"
-          >
-            <div className="flex items-center gap-3">
-              <div className="w-10 h-10 rounded-2xl bg-rose-500/20 text-rose-400 flex items-center justify-center shrink-0 border border-rose-500/30">
-                <Heart className="w-5 h-5 fill-rose-500 text-rose-500" />
-              </div>
-              <div className="text-left">
-                <h4 className="font-bold text-xs text-white flex items-center gap-1.5">
-                  <span>Invite Your Spouse to Step In</span>
-                </h4>
-                <p className="text-[11px] text-slate-300">
-                  She/he will receive a special invitation card right in her chat!
-                </p>
-              </div>
-            </div>
 
-            <button
-              type="button"
-              id="btn-inchat-open-invite"
-              onClick={onOpenInviteSpouse}
-              className="w-full sm:w-auto py-2.5 px-4 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:opacity-95 text-white font-bold text-xs shadow-md shadow-rose-500/20 active:scale-95 transition flex items-center justify-center gap-1.5 cursor-pointer whitespace-nowrap"
-            >
-              <Mail className="w-3.5 h-3.5" />
-              <span>Invite Spouse &rarr;</span>
-            </button>
-          </div>
-        )}
 
         {/* Message List */}
         {messages.map((msg) => {

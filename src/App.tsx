@@ -4445,6 +4445,9 @@ export default function App() {
           senderEmail={authUser?.email}
           existingPartnerName={config.partnerName}
           hasExistingPartner={config.spaceType === 'couple' && (Boolean(partner) || config.isVerified)}
+          pendingInvites={pendingInvites}
+          onAcceptInvite={handleAcceptInvite}
+          onDeclineInvite={(id) => setPendingInvites((prev) => prev.filter((i) => i.id !== id))}
         />
       )}
 

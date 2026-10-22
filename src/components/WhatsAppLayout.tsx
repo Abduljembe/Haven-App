@@ -947,6 +947,21 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
               <Music className={`w-5 h-5 ${isMusicPlaying ? 'text-emerald-400 animate-pulse' : ''}`} />
             </button>
 
+            {/* Tab: Invite Hub */}
+            <button
+              type="button"
+              onClick={onInviteSpouse}
+              className="w-11 h-11 rounded-xl flex items-center justify-center transition-all cursor-pointer relative hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400 group"
+              title="Invite & Pending Invites Hub"
+            >
+              <Mail className="w-5 h-5 text-rose-400 group-hover:scale-110 transition-transform" />
+              {pendingInvites && pendingInvites.filter((i) => i.status === 'pending').length > 0 && (
+                <span className="absolute top-1 right-1 w-4 h-4 rounded-full bg-rose-600 text-white text-[9px] font-bold flex items-center justify-center animate-bounce">
+                  {pendingInvites.filter((i) => i.status === 'pending').length}
+                </span>
+              )}
+            </button>
+
             {/* Tab: Calls */}
             <button
               type="button"
@@ -1101,6 +1116,8 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
               >
                 <QrCode className="w-5 h-5 text-emerald-500" />
               </button>
+
+
 
               {/* All Features Catalog Modal */}
               <button
@@ -2574,6 +2591,8 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
                 <span>Music Lounge</span>
               </button>
             )}
+
+
 
             {/* Live Love Canvas */}
             {onOpenCanvas && (
