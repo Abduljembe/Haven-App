@@ -1008,7 +1008,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       const cleanTitle = currentMedia.title.replace(/\s*\(S\d+.*?\)/i, '').trim();
       setVidukiNotice({
         type: 'info',
-        message: `Switching "${cleanTitle}" to guaranteed HD Cinema stream...`,
+        message: 'Fetching movie stream...',
       });
 
       const guaranteedFallback: MediaItem = {
@@ -1040,7 +1040,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       setIsEmbedSuspended(false);
       setVidukiNotice({
         type: 'info',
-        message: `Switched stream to Server ${server} (${server === 1 ? 'VidLink Clean HD' : server === 3 ? 'Vidsrc Global' : 'Viduki Cinema'}) for you and partner.`,
+        message: 'Fetching movie stream...',
       });
 
       // Broadcast to partner so partner syncs to the new server
@@ -1063,7 +1063,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       setCurrentMedia(updated);
       setVidukiNotice({
         type: 'info',
-        message: `Now streaming Season ${season}, Episode ${episode}.`,
+        message: 'Fetching movie stream...',
       });
 
       // Broadcast to partner
@@ -1089,7 +1089,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       setSeriesModalItem(null);
       setVidukiNotice({
         type: 'info',
-        message: `Now streaming ${cleanSeriesTitle(series.title)} (Season ${seasonNum}, Episode ${episodeNum}) with partner.`,
+        message: 'Fetching movie stream...',
       });
     },
     [vidukiConfig.themeColor, vidukiConfig.defaultServer, vidukiColorInput, handleChangeMovie]
