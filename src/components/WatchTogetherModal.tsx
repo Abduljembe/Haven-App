@@ -2893,7 +2893,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               <iframe
                 ref={ytIframeRef}
                 id="yt-cinema-iframe"
-                src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&enablejsapi=1&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
+                src={`https://www.youtube-nocookie.com/embed/${ytId}?autoplay=1&enablejsapi=1&rel=0&modestbranding=1&iv_load_policy=3&origin=${typeof window !== 'undefined' ? window.location.origin : ''}`}
                 title={currentMedia.title}
                 className="w-full h-full border-0"
                 allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
@@ -3220,30 +3220,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 </div>
               </div>
 
-              {/* Viduki Active Notice Banner */}
-              {vidukiNotice && (
-                <div
-                  className={`absolute top-14 left-4 right-4 z-30 px-3.5 py-2 rounded-xl backdrop-blur-md border text-xs flex items-center justify-between gap-2 shadow-2xl animate-in fade-in ${
-                    vidukiNotice.type === 'error'
-                      ? 'bg-red-950/90 border-red-500/50 text-red-200'
-                      : vidukiNotice.type === 'warning'
-                      ? 'bg-amber-950/90 border-amber-500/50 text-amber-200'
-                      : 'bg-slate-900/90 border-rose-500/40 text-slate-200'
-                  }`}
-                >
-                  <div className="flex items-center gap-2 min-w-0">
-                    <Sparkles className="w-3.5 h-3.5 shrink-0 text-rose-400 animate-pulse" />
-                    <span className="truncate">{vidukiNotice.message}</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => setVidukiNotice(null)}
-                    className="text-slate-400 hover:text-white p-1 cursor-pointer shrink-0"
-                  >
-                    <X className="w-3.5 h-3.5" />
-                  </button>
-                </div>
-              )}
+
 
 
 
