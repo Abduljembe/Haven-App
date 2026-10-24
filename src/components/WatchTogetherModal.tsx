@@ -2857,6 +2857,19 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   }
                 }}
               />
+
+              {/* Fallback / YouTube bypass helper overlay */}
+              <div className="absolute top-3 right-3 z-30">
+                <button
+                  type="button"
+                  onClick={() => switchToFallbackApi()}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xl border border-rose-400/40 flex items-center gap-1.5 transition cursor-pointer"
+                  title="Switch to guaranteed HD cinema stream"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>🎬 Switch to HD Stream</span>
+                </button>
+              </div>
               {/* YouTube Paused Overlay */}
               {!isPlaying && (
                 <div
@@ -2904,6 +2917,19 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   allowFullScreen
                 />
               )}
+
+              {/* Fallback / CAPTCHA bypass helper overlay */}
+              <div className="absolute top-3 right-3 z-30">
+                <button
+                  type="button"
+                  onClick={() => switchToFallbackApi()}
+                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xl border border-rose-400/40 flex items-center gap-1.5 transition cursor-pointer"
+                  title="Switch to guaranteed YouTube / Archive.org HD stream"
+                >
+                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
+                  <span>🎬 Switch to HD Stream</span>
+                </button>
+              </div>
 
               {/* Animated HUD Indicator on Action (Play / Pause / Resume) */}
               {screenActionIndicator && (
