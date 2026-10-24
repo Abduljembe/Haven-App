@@ -25,6 +25,7 @@ import { MusicTrack, SyncMusicState } from '../types';
 import { musicEngine } from '../utils/musicEngine';
 import { useHavenVoiceAssistant } from '../hooks/useHavenVoiceAssistant';
 import { HavenVoiceControl } from './HavenVoiceControl';
+import { searchYouTubeDirect } from '../utils/movieCatalog';
 
 interface MusicLoungeModalProps {
   isOpen: boolean;
@@ -149,6 +150,31 @@ export const MusicLoungeModal: React.FC<MusicLoungeModalProps> = ({
       }
     } catch (err) {
       console.error('Direct public web music search failed:', err);
+    }
+
+    // 3. YouTube Music Search fallback
+    try {
+      const ytResults = await searchYouTubeDirect(`${q} music audio`);
+      if (ytResults && ytResults.length > 0) {
+        const ytTracks: MusicTrack[] = ytResults.map((item) => ({
+          id: `yt-music-${item.id}`,
+          title: item.title,
+          artist: item.artist || 'YouTube Music',
+          genre: 'YouTube Audio',
+          duration: item.duration || 180,
+          coverEmoji: '🔴',
+          coverGradient: 'from-red-600 via-rose-600 to-pink-600',
+          mood: 'trending' as const,
+          bpm: 120,
+          url: item.url,
+          artworkUrl: item.thumbnailUrl,
+          synthTheme: 'lofi',
+          source: 'stream' as const,
+        }));
+        return ytTracks;
+      }
+    } catch (e) {
+      console.warn('YouTube music search error:', e);
     }
 
     return [];

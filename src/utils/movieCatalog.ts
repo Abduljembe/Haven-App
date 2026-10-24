@@ -877,7 +877,7 @@ export async function searchYouTubeDirect(query: string): Promise<MediaItem[]> {
   ];
 }
 
-// Live search online movies using TMDB API + Viduki streaming
+// Live search online movies using TMDB API + Direct YouTube Open Streaming (100% Ad-Free, Smooth, No CAPTCHAs)
 export async function searchOnlineMovies(query: string, category: string = 'all'): Promise<MediaItem[]> {
   const trimmed = query.trim();
   if (!trimmed) {
@@ -885,10 +885,10 @@ export async function searchOnlineMovies(query: string, category: string = 'all'
       return searchYouTubeDirect('trending relax music 4k');
     }
     const trending = await fetchTmdbTrending();
-    return trending.length > 0 ? trending : FEATURED_VIDUKI_CATALOG;
+    return trending.length > 0 ? trending : FEATURED_MOVIES;
   }
 
-  // 1. Check TMDB Search API (Primary Source)
+  // 1. Check TMDB Search API (Primary Metadata Source)
   try {
     const tmdbResults = await searchTmdbMovies(trimmed);
     if (tmdbResults.length > 0) return tmdbResults;
@@ -896,15 +896,7 @@ export async function searchOnlineMovies(query: string, category: string = 'all'
     console.warn('TMDB search failed:', err);
   }
 
-  // 2. Viduki fallback search
-  try {
-    const vidukiResults = await searchVidukiMovies(trimmed);
-    if (vidukiResults.length > 0) return vidukiResults;
-  } catch (err) {
-    console.warn('Viduki search failed:', err);
-  }
-
-  // 3. YouTube direct search
+  // 2. Direct YouTube Open Streaming Search
   try {
     const ytResults = await searchYouTubeDirect(trimmed);
     if (ytResults.length > 0) return ytResults;
@@ -912,20 +904,18 @@ export async function searchOnlineMovies(query: string, category: string = 'all'
     console.warn('Direct YouTube search failed:', err);
   }
 
-  return [];
+  return FEATURED_MOVIES.filter((m) => m.title.toLowerCase().includes(trimmed.toLowerCase()));
 }
 
-// Surprise movie randomizer (Viduki or YouTube ONLY)
+// Surprise movie randomizer (TMDB & YouTube HD Cinema)
 export async function getSurpriseMovie(category: string = 'all'): Promise<MediaItem> {
-  if (category === 'youtube') {
-    try {
-      const yt = await searchYouTubeDirect('trending viral 4k');
-      if (yt.length > 0) {
-        return yt[Math.floor(Math.random() * yt.length)];
-      }
-    } catch {}
-  }
-  return FEATURED_VIDUKI_CATALOG[Math.floor(Math.random() * FEATURED_VIDUKI_CATALOG.length)];
+  try {
+    const trending = await fetchTmdbTrending();
+    if (trending.length > 0) {
+      return trending[Math.floor(Math.random() * trending.length)];
+    }
+  } catch {}
+  return FEATURED_MOVIES[Math.floor(Math.random() * FEATURED_MOVIES.length)];
 }
 
 // Helper to parse and fetch metadata from arbitrary URLs or query

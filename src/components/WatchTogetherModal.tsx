@@ -2272,12 +2272,64 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
           </button>
         </div>
       ) : (
-        /* Movie & Video Cards Grid */
-        <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
-          {searchResults.map((movie, idx) => {
-            const isActive = currentMedia.id === movie.id;
-            const isInWatchlist = watchlist.some((w) => w.movie.id === movie.id);
-            const isVidukiItem = movie.source === 'viduki' || selectedCategory === 'viduki';
+        <>
+          {searchResults.length > 0 && (
+            <div className="relative w-full rounded-2xl overflow-hidden bg-gradient-to-t from-slate-950 via-slate-900 to-slate-900 border border-slate-800 shadow-2xl mb-6 group">
+              <div className="absolute inset-0">
+                <img
+                  src={searchResults[0].backdropUrl || searchResults[0].thumbnailUrl || 'https://images.unsplash.com/photo-1489599849927-2ee91cede3ba?w=1200'}
+                  alt={searchResults[0].title}
+                  className="w-full h-full object-cover opacity-40 group-hover:scale-105 transition-transform duration-700"
+                />
+                <div className="absolute inset-0 bg-gradient-to-r from-black via-black/80 to-transparent" />
+                <div className="absolute inset-0 bg-gradient-to-t from-slate-950 via-transparent to-transparent" />
+              </div>
+
+              <div className="relative z-10 p-6 sm:p-10 max-w-xl flex flex-col justify-center space-y-3">
+                <div className="flex items-center gap-2">
+                  <span className="px-2.5 py-0.5 rounded bg-red-600 text-white font-bold text-[10px] tracking-wider uppercase shadow">
+                    NETFLIX SPOTLIGHT
+                  </span>
+                  <span className="text-amber-400 font-bold text-xs">★ {searchResults[0].rating || '9.4/10'}</span>
+                  <span className="text-slate-300 text-xs">{searchResults[0].year || '2026'}</span>
+                </div>
+
+                <h2 className="text-2xl sm:text-4xl font-extrabold font-serif text-white tracking-tight">
+                  {searchResults[0].title}
+                </h2>
+
+                <p className="text-xs sm:text-sm text-slate-300 line-clamp-3 leading-relaxed">
+                  {searchResults[0].description || searchResults[0].genre || 'Stream in ultra HD cinema quality together with your partner in real-time sync.'}
+                </p>
+
+                <div className="flex items-center gap-3 pt-2">
+                  <button
+                    type="button"
+                    onClick={() => handleChangeMovie(searchResults[0])}
+                    className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-red-600/40 active:scale-95 transition cursor-pointer"
+                  >
+                    <Play className="w-4 h-4 fill-white" />
+                    <span>Play Now</span>
+                  </button>
+                  <button
+                    type="button"
+                    onClick={() => handleToggleWatchlist(searchResults[0])}
+                    className="px-5 py-3 rounded-xl bg-slate-800/90 hover:bg-slate-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 border border-slate-700 active:scale-95 transition cursor-pointer"
+                  >
+                    <Bookmark className="w-4 h-4" />
+                    <span>+ My List</span>
+                  </button>
+                </div>
+              </div>
+            </div>
+          )}
+
+          {/* Movie & Video Cards Grid */}
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
+            {searchResults.map((movie, idx) => {
+              const isActive = currentMedia.id === movie.id;
+              const isInWatchlist = watchlist.some((w) => w.movie.id === movie.id);
+              const isVidukiItem = movie.source === 'viduki' || selectedCategory === 'viduki';
             const isSeries = isSeriesItem(movie);
 
             return (
@@ -2483,7 +2535,8 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               </div>
             );
           })}
-        </div>
+          </div>
+        </>
       )}
     </div>
   );
