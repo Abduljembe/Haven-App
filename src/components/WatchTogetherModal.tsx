@@ -68,25 +68,9 @@ import {
   MovieWatchlistEntry,
   CallType,
   CallStatus,
-  VidukiConfig,
-  VidukiFailedEvent,
-  VidukiWatchProgress,
 } from '../types';
 import { FEATURED_MOVIES, extractYouTubeId, searchOrFetchMovie, fetchOnlineMovies, searchOnlineMovies, getSurpriseMovie, fetchDirectYouTubeVideo, searchYouTubeDirect } from '../utils/movieCatalog';
-import {
-  getVidukiConfig,
-  saveVidukiConfig,
-  testVidukiConnection,
-  searchVidukiMovies,
-  fetchVidukiTrending,
-  DEFAULT_VIDUKI_CONFIG,
-  switchVidukiServer,
-  switchVidukiEpisode,
-  buildVidukiStreamUrl,
-  saveVidukiProgress,
-  getVidukiProgress,
-  FEATURED_VIDUKI_CATALOG,
-} from '../utils/vidukiService';
+import { fetchTmdbTrending, searchTmdbMovies } from '../utils/tmdbService';
 import { VerifiedBadgeOverlay } from './common/VerifiedBadgeOverlay';
 import { useHavenVoiceAssistant } from '../hooks/useHavenVoiceAssistant';
 import { HavenVoiceControl } from './HavenVoiceControl';
@@ -167,11 +151,11 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
   const [isMutedMovie, setIsMutedMovie] = useState(false);
   const [lastSyncBy, setLastSyncBy] = useState<string>('');
 
-  // Movie Fetcher & Search States (Viduki.net & YouTube ONLY)
+  // Movie Fetcher & Search States (TMDB & YouTube Cinema)
   const [searchQuery, setSearchQuery] = useState('');
-  const [searchMode, setSearchMode] = useState<'youtube' | 'viduki'>('viduki');
-  const [selectedCategory, setSelectedCategory] = useState<string>('viduki');
-  const [searchResults, setSearchResults] = useState<MediaItem[]>([...FEATURED_MOVIES, ...FEATURED_VIDUKI_CATALOG]);
+  const [searchMode, setSearchMode] = useState<'all' | 'tmdb' | 'youtube'>('tmdb');
+  const [selectedCategory, setSelectedCategory] = useState<string>('tmdb');
+  const [searchResults, setSearchResults] = useState<MediaItem[]>(FEATURED_MOVIES);
   const [isSearching, setIsSearching] = useState(false);
   const [showCatalog, setShowCatalog] = useState(true);
   const [showCustomLinkInput, setShowCustomLinkInput] = useState(false);
@@ -179,68 +163,14 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
   const [ytFetchLoading, setYtFetchLoading] = useState(false);
   const [ytPreviewItem, setYtPreviewItem] = useState<MediaItem | null>(null);
 
-  // Automatically resolve playable native in-app stream for any movie selected (zero sandbox, 100% in-app media player)
-  useEffect(() => {
-    if (currentMedia && (currentMedia.source === 'viduki' || currentMedia.type === 'embed') && !currentMedia.url.includes('youtube.com') && !currentMedia.url.includes('archive.org')) {
-      const titleQuery = `${currentMedia.title} full movie hd`;
-      searchYouTubeDirect(titleQuery).then((results) => {
-        if (results && results.length > 0) {
-          const match = results[0];
-          setCurrentMedia((prev) => ({
-            ...prev,
-            type: 'youtube',
-            url: match.url,
-            embedUrl: match.embedUrl || match.url,
-          }));
-        } else {
-          const nativeFallback = FEATURED_MOVIES[0];
-          setCurrentMedia((prev) => ({
-            ...prev,
-            type: nativeFallback.type,
-            url: nativeFallback.url,
-            embedUrl: nativeFallback.embedUrl || nativeFallback.url,
-          }));
-        }
-      }).catch(() => {});
-    }
-  }, [currentMedia?.id]);
-
-  // Auto-fallback timeout timer: if stream iframe takes > 6s, automatically switch to next server (1 -> 2 -> 3 -> 4)
-  useEffect(() => {
-    if (!currentMedia || currentMedia.type === 'video' || currentMedia.type === 'youtube') return;
-    const timer = setTimeout(() => {
-      const curServer = (currentMedia.server && [1, 2, 3, 4].includes(currentMedia.server)) ? currentMedia.server : 1;
-      if (curServer < 4) {
-        const next = (curServer + 1) as 1 | 2 | 3 | 4;
-        handleSwitchVidukiServer(next);
-      }
-    }, 6000);
-    return () => clearTimeout(timer);
-  }, [currentMedia?.id, currentMedia?.server]);
-
-  // Viduki.net Movie Streaming API State
-  const [vidukiConfig, setVidukiConfig] = useState<VidukiConfig>(DEFAULT_VIDUKI_CONFIG);
-  const [showVidukiModal, setShowVidukiModal] = useState(false);
-  const [vidukiKeyInput, setVidukiKeyInput] = useState('');
-  const [vidukiBaseUrlInput, setVidukiBaseUrlInput] = useState('https://viduki.net/api');
-  const [vidukiTemplateInput, setVidukiTemplateInput] = useState('https://viduki.net/{server}/movie/{id}?color={color}');
-  const [vidukiQualityInput, setVidukiQualityInput] = useState('1080p Ultra HD');
-  const [vidukiServerInput, setVidukiServerInput] = useState<1 | 2 | 3 | 4>(1);
-  const [vidukiColorInput, setVidukiColorInput] = useState('f43f5e');
-  const [showVidukiKey, setShowVidukiKey] = useState(false);
-  const [isTestingViduki, setIsTestingViduki] = useState(false);
-  const [vidukiTestResult, setVidukiTestResult] = useState<{ success: boolean; message: string } | null>(null);
-  const [isSavingViduki, setIsSavingViduki] = useState(false);
-  const [vidukiSearchQuery, setVidukiSearchQuery] = useState('');
-  const [vidukiTestMovies, setVidukiTestMovies] = useState<MediaItem[]>([]);
-  const [isSearchingVidukiTest, setIsSearchingVidukiTest] = useState(false);
-  const [vidukiNotice, setVidukiNotice] = useState<{ type: 'info' | 'warning' | 'error'; message: string } | null>(null);
+  // TMDB & Series State
+  const [showTmdbInfoModal, setShowTmdbInfoModal] = useState(false);
   const [seriesModalItem, setSeriesModalItem] = useState<MediaItem | null>(null);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
   const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
 
   // Showcase Spotlight & Screen Share States
-  const [spotlightMovie, setSpotlightMovie] = useState<MediaItem>(FEATURED_VIDUKI_CATALOG[0]);
+  const [spotlightMovie, setSpotlightMovie] = useState<MediaItem>(FEATURED_MOVIES[0]);
   const [isScreenSharing, setIsScreenSharing] = useState(false);
   const [localScreenStream, setLocalScreenStream] = useState<MediaStream | null>(null);
   const screenVideoRef = useRef<HTMLVideoElement | null>(null);
@@ -287,7 +217,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
   } | null>(null);
   const hasTriggeredEndedRef = useRef<boolean>(false);
   const ytIframeRef = useRef<HTMLIFrameElement | null>(null);
-  const vidukiIframeRef = useRef<HTMLIFrameElement | null>(null);
+  const cinemaIframeRef = useRef<HTMLIFrameElement | null>(null);
   const isPlayingRef = useRef<boolean>(isPlaying);
   useEffect(() => {
     isPlayingRef.current = isPlaying;
@@ -353,9 +283,9 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     }
   }, []);
 
-  // Send play/pause commands to embedded Viduki & streaming cinema iframe
-  const sendVidukiCommand = useCallback((action: 'play' | 'pause') => {
-    const iframe = vidukiIframeRef.current;
+  // Send play/pause commands to embedded streaming cinema iframe
+  const sendCinemaCommand = useCallback((action: 'play' | 'pause') => {
+    const iframe = cinemaIframeRef.current;
     if (!iframe?.contentWindow) return;
     const targetFunc = action === 'play' ? 'playVideo' : 'pauseVideo';
     const payloads = [
@@ -555,10 +485,10 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       if (isYt) {
         sendYouTubeCommand(mediaSyncState.isPlaying ? 'playVideo' : 'pauseVideo');
       } else {
-        sendVidukiCommand(mediaSyncState.isPlaying ? 'play' : 'pause');
+        sendCinemaCommand(mediaSyncState.isPlaying ? 'play' : 'pause');
       }
     }
-  }, [mediaSyncState, currentMedia.id, currentMedia.type, partnerName, currentUserId, ytId, sendYouTubeCommand, sendVidukiCommand]);
+  }, [mediaSyncState, currentMedia.id, currentMedia.type, partnerName, currentUserId, ytId, sendYouTubeCommand, sendCinemaCommand]);
 
   // Broadcast sync state helper
   const broadcastSync = useCallback(
@@ -575,7 +505,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     [currentMedia, currentUserId, currentUserName, onSyncMedia]
   );
 
-  // Play / Pause Toggle (Supports HTML5 video, YouTube, Viduki cinema & embeds)
+  // Play / Pause Toggle (Supports HTML5 video, YouTube, TMDB cinema & embeds)
   const togglePlayPause = useCallback(
     (forceState?: boolean | React.MouseEvent | any) => {
       const isExplicitBool = typeof forceState === 'boolean';
@@ -608,13 +538,13 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       } else if (isYt) {
         sendYouTubeCommand(nextState ? 'playVideo' : 'pauseVideo');
       } else {
-        // Viduki & embedded streaming cinema: send command without destroying iframe
-        sendVidukiCommand(nextState ? 'play' : 'pause');
+        // TMDB & embedded streaming cinema: send command without destroying iframe
+        sendCinemaCommand(nextState ? 'play' : 'pause');
       }
 
       broadcastSync(nextState, videoRef.current ? videoRef.current.currentTime : currentTime);
     },
-    [currentMedia.type, ytId, sendYouTubeCommand, sendVidukiCommand, broadcastSync, currentTime]
+    [currentMedia.type, ytId, sendYouTubeCommand, sendCinemaCommand, broadcastSync, currentTime]
   );
 
   // Dedicated Stop Movie & Silence Stream
@@ -637,11 +567,11 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     } else if (isYt) {
       sendYouTubeCommand('pauseVideo');
     } else {
-      sendVidukiCommand('pause');
+      sendCinemaCommand('pause');
     }
 
     broadcastSync(false, 0);
-  }, [currentMedia.type, ytId, sendYouTubeCommand, sendVidukiCommand, broadcastSync]);
+  }, [currentMedia.type, ytId, sendYouTubeCommand, sendCinemaCommand, broadcastSync]);
 
   // Click on video screen handler (interception layer to prevent third-party ad popups)
   const handleScreenClick = useCallback(() => {
@@ -744,8 +674,13 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         }
       }
 
-      const color = vidukiConfig.themeColor || vidukiColorInput || 'f43f5e';
-      return switchVidukiEpisode(currentMedia, targetSeason, targetEp, color);
+      return {
+        ...currentMedia,
+        season: targetSeason,
+        episode: targetEp,
+        title: `${cleanSeriesTitle(currentMedia.title)} (S${targetSeason}E${targetEp})`,
+        embedUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(cleanSeriesTitle(currentMedia.title) + ' season ' + targetSeason + ' episode ' + targetEp)}&autoplay=1`,
+      };
     }
 
     // 1. If currently browsing/searching with multiple results, pick the next one in the shelf
@@ -764,16 +699,16 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       }
     }
 
-    // 3. Fallback to FEATURED_VIDUKI_CATALOG sequence
-    const vIdx = FEATURED_VIDUKI_CATALOG.findIndex((m) => m.id === currentMedia.id || m.url === currentMedia.url);
-    if (vIdx !== -1 && FEATURED_VIDUKI_CATALOG.length > 1) {
-      return FEATURED_VIDUKI_CATALOG[(vIdx + 1) % FEATURED_VIDUKI_CATALOG.length];
+    // 3. Fallback to FEATURED_MOVIES sequence
+    const vIdx = FEATURED_MOVIES.findIndex((m) => m.id === currentMedia.id || m.url === currentMedia.url);
+    if (vIdx !== -1 && FEATURED_MOVIES.length > 1) {
+      return FEATURED_MOVIES[(vIdx + 1) % FEATURED_MOVIES.length];
     }
 
     // 4. Default fallback to next available movie in catalog
-    const remaining = FEATURED_VIDUKI_CATALOG.filter((m) => m.id !== currentMedia.id);
-    return remaining.length > 0 ? remaining[0] : FEATURED_VIDUKI_CATALOG[0];
-  }, [searchResults, currentMedia.id, currentMedia.url, watchlist]);
+    const remaining = FEATURED_MOVIES.filter((m) => m.id !== currentMedia.id);
+    return remaining.length > 0 ? remaining[0] : FEATURED_MOVIES[0];
+  }, [searchResults, currentMedia, watchlist]);
 
   // Triggered when any video (HTML5 or YouTube) finishes playing
   const handleVideoFinished = useCallback(() => {
@@ -974,285 +909,98 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     handleSeek(next);
   };
 
-  // Load Viduki config & catalog on mount
+  // Load TMDB trending cinema catalog on mount
   useEffect(() => {
     let isMounted = true;
-    setSearchResults(FEATURED_VIDUKI_CATALOG);
-    // Load Viduki config & full trending catalog
-    getVidukiConfig().then((cfg) => {
+    fetchTmdbTrending().then((trending) => {
       if (!isMounted) return;
-      setVidukiConfig(cfg);
-      setVidukiKeyInput(cfg.apiKey || '');
-      setVidukiBaseUrlInput(cfg.baseUrl || 'https://viduki.net/api');
-      setVidukiTemplateInput(cfg.embedTemplate || 'https://viduki.net/{server}/movie/{id}?color={color}');
-      setVidukiQualityInput(cfg.preferredQuality || '1080p Ultra HD');
-      setVidukiServerInput(cfg.defaultServer || 1);
-      setVidukiColorInput(cfg.themeColor || 'f43f5e');
-
-      // Fetch dynamic trending movies from server/Cinemeta
-      fetchVidukiTrending(cfg).then((trending) => {
-        if (!isMounted) return;
-        if (trending && trending.length > 0) {
-          setSearchResults(trending);
-        }
-      });
-    });
+      if (trending && trending.length > 0) {
+        setSearchResults(trending);
+        setSpotlightMovie(trending[0]);
+      }
+    }).catch(() => {});
     return () => {
       isMounted = false;
     };
   }, []);
 
-  // Switch to cinema fallback API when Viduki all servers fail (or user requests)
-  const switchToFallbackApi = useCallback(
-    (failedMedia?: any) => {
-      const cleanTitle = currentMedia.title.replace(/\s*\(S\d+.*?\)/i, '').trim();
-      setVidukiNotice({
-        type: 'info',
-        message: 'Fetching movie stream...',
-      });
-
-      const guaranteedFallback: MediaItem = {
-        id: `fallback-${Date.now()}`,
-        title: `${cleanTitle} (HD Stream)`,
-        artist: 'Haven Cinema Network',
-        type: 'youtube',
-        url: 'https://www.youtube.com/watch?v=kYQGz2bHlG8',
-        embedUrl: 'https://www.youtube.com/embed/kYQGz2bHlG8?autoplay=1&enablejsapi=1',
-        thumbnailUrl: 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=800&auto=format&fit=crop&q=80',
-        description: `Guaranteed HD Cinema playback stream for ${cleanTitle}.`,
-        rating: '1080p HD',
-        badge: 'HD Cinema 🎬',
-        source: 'youtube',
+  // Select Season & Episode from Series Picker Modal
+  const handleSelectSeriesEpisode = useCallback(
+    (series: MediaItem, seasonNum: number, episodeNum: number) => {
+      const updated: MediaItem = {
+        ...series,
+        season: seasonNum,
+        episode: episodeNum,
+        title: `${cleanSeriesTitle(series.title)} (S${seasonNum}E${episodeNum})`,
+        embedUrl: `https://www.youtube.com/embed?listType=search&list=${encodeURIComponent(cleanSeriesTitle(series.title) + ' season ' + seasonNum + ' episode ' + episodeNum)}&autoplay=1`,
       };
-      handleChangeMovie(guaranteedFallback);
+      handleChangeMovie(updated);
+      setSeriesModalItem(null);
+    },
+    [handleChangeMovie]
+  );
+
+  // Switch TV Episode helper for player bar
+  const handleSwitchEpisode = useCallback(
+    (seasonNum: number, episodeNum: number) => {
+      if (!currentMedia) return;
+      handleSelectSeriesEpisode(currentMedia, seasonNum, episodeNum);
+    },
+    [currentMedia, handleSelectSeriesEpisode]
+  );
+
+  // Switch Stream Server helper
+  const handleSwitchStreamServer = useCallback(
+    (serverId: 1 | 2 | 3 | 4) => {
+      handleChangeMovie({
+        ...currentMedia,
+        server: serverId,
+      });
     },
     [currentMedia, handleChangeMovie]
   );
 
-  // Switch Viduki Server (1, 2, 3, or 4)
-  const handleSwitchVidukiServer = useCallback(
-    (server: 1 | 2 | 3 | 4) => {
-      const color = vidukiConfig.themeColor || vidukiColorInput || 'f43f5e';
-      const updated = switchVidukiServer(currentMedia, server, color);
-      setCurrentMedia(updated);
-      setIsPlayerActive(true);
-      setIsPlaying(true);
-      setIsEmbedSuspended(false);
-      setVidukiNotice({
-        type: 'info',
-        message: 'Fetching movie stream...',
-      });
+  // Fallback stream switcher
+  const switchToFallbackStream = useCallback(() => {
+    const fallback = FEATURED_MOVIES.find((m) => m.id !== currentMedia.id) || FEATURED_MOVIES[0];
+    if (fallback) {
+      handleChangeMovie(fallback);
+    }
+  }, [currentMedia.id, handleChangeMovie]);
 
-      // Broadcast to partner so partner syncs to the new server
-      onSyncMedia({
-        currentMedia: updated,
-        currentTime: 0,
-        isPlaying: true,
-        lastUpdatedBy: currentUserName,
-        timestamp: Date.now(),
-      });
-    },
-    [currentMedia, vidukiConfig.themeColor, vidukiColorInput, onSyncMedia, currentUserName]
-  );
-
-  // Switch Viduki TV Season / Episode
-  const handleSwitchVidukiEpisode = useCallback(
-    (season: number, episode: number) => {
-      const color = vidukiConfig.themeColor || vidukiColorInput || 'f43f5e';
-      const updated = switchVidukiEpisode(currentMedia, season, episode, color);
-      setCurrentMedia(updated);
-      setVidukiNotice({
-        type: 'info',
-        message: 'Fetching movie stream...',
-      });
-
-      // Broadcast to partner
-      onSyncMedia({
-        currentMedia: updated,
-        currentTime: 0,
-        isPlaying: true,
-        lastUpdatedBy: currentUserName,
-        timestamp: Date.now(),
-      });
-    },
-    [currentMedia, vidukiConfig.themeColor, vidukiColorInput, onSyncMedia, currentUserName]
-  );
-
-  // Select Season & Episode from Series Picker Modal
-  const handleSelectSeriesEpisode = useCallback(
-    (series: MediaItem, seasonNum: number, episodeNum: number, serverOverride?: 1 | 2 | 3 | 4) => {
-      const color = vidukiConfig.themeColor || vidukiColorInput || 'f43f5e';
-      const targetServer = serverOverride || (series.server as 1 | 2 | 3 | 4) || vidukiConfig.defaultServer || 1;
-      const updated = switchVidukiEpisode({ ...series, server: targetServer }, seasonNum, episodeNum, color);
-
-      handleChangeMovie(updated);
-      setSeriesModalItem(null);
-      setVidukiNotice({
-        type: 'info',
-        message: 'Fetching movie stream...',
-      });
-    },
-    [vidukiConfig.themeColor, vidukiConfig.defaultServer, vidukiColorInput, handleChangeMovie]
-  );
-
-  // Viduki Event Listener: window.addEventListener("message", ...)
+  // Video embed listener: window.addEventListener("message", ...)
   useEffect(() => {
-    const handleVidukiMessage = (event: MessageEvent) => {
-      // Security check: only process events from viduki.net
-      if (
-        event.origin !== 'https://www.viduki.net' &&
-        event.origin !== 'https://viduki.net'
-      ) {
-        return;
-      }
-
+    const handleEmbedMessage = (event: MessageEvent) => {
       const data = event.data;
       if (!data || typeof data !== 'object') return;
-
-      // 1. Handle: viduki:all-servers-failed
-      if (data.type === 'viduki:all-servers-failed') {
-        console.warn('Viduki: All servers failed event received:', data);
-        const currentServer = (currentMedia.server && [1, 2, 3, 4].includes(currentMedia.server))
-          ? currentMedia.server
-          : 1;
-
-        // Attempt automatic switch to next server if < 4
-        if (currentServer < 4 && vidukiConfig.autoFallbackOnFailure !== false) {
-          const nextServer = (currentServer + 1) as 1 | 2 | 3 | 4;
-          setVidukiNotice({
-            type: 'warning',
-            message: `Viduki Server ${currentServer} reported 404. Automatically switching to Server ${nextServer}...`,
-          });
-          handleSwitchVidukiServer(nextServer);
-        } else {
-          // All servers exhausted or manual fallback
-          switchToFallbackApi(data.media);
-        }
-      }
-
-      // 2. Handle watch progress events if dispatched
-      if (data.type === 'viduki:progress' || (data.progress && typeof data.progress.watched === 'number')) {
-        const id = data.media?.tmdbid || currentMedia.tmdbId || currentMedia.id;
-        saveVidukiProgress({
-          id: String(id),
-          type: (data.media?.type || currentMedia.mediaType || 'movie') as 'movie' | 'tv',
-          title: currentMedia.title,
-          progress: {
-            watched: data.progress.watched,
-            duration: data.progress.duration || currentMedia.duration || 7200,
-          },
-          last_season_watched: data.media?.season || currentMedia.season,
-          last_episode_watched: data.media?.episode || currentMedia.episode,
-        });
-      }
-
-      // 3. Handle video ended event from Viduki / embed player to auto-advance episodes and seasons
       if (
-        data.type === 'viduki:ended' ||
         data.type === 'ended' ||
         data.event === 'ended' ||
         data.event === 'onEnded' ||
-        data.action === 'ended' ||
-        (data.progress && typeof data.progress.watched === 'number' && typeof data.progress.duration === 'number' && data.progress.duration > 30 && data.progress.watched >= data.progress.duration - 2)
+        data.action === 'ended'
       ) {
         handleVideoFinished();
       }
     };
 
-    window.addEventListener('message', handleVidukiMessage);
+    window.addEventListener('message', handleEmbedMessage);
     return () => {
-      window.removeEventListener('message', handleVidukiMessage);
+      window.removeEventListener('message', handleEmbedMessage);
     };
-  }, [currentMedia, vidukiConfig, handleSwitchVidukiServer, switchToFallbackApi, handleVideoFinished]);
+  }, [handleVideoFinished]);
 
-  // Save Viduki configuration
-  const handleSaveVidukiConfig = async () => {
-    setIsSavingViduki(true);
-    setVidukiTestResult(null);
-    try {
-      const res = await saveVidukiConfig({
-        apiKey: vidukiKeyInput.trim(),
-        baseUrl: vidukiBaseUrlInput.trim(),
-        embedTemplate: vidukiTemplateInput.trim(),
-        enabled: true,
-        preferredQuality: vidukiQualityInput,
-        defaultServer: vidukiServerInput,
-        themeColor: vidukiColorInput.replace('#', '').trim() || 'f43f5e',
-        autoFallbackOnFailure: true,
-      });
-
-      if (res.success) {
-        const updated = await getVidukiConfig();
-        setVidukiConfig(updated);
-        setVidukiTestResult({
-          success: true,
-          message: 'Viduki API configured and synced with your partner successfully!',
-        });
-        // Immediately fetch trending movies from Viduki
-        const trending = await fetchVidukiTrending(updated);
-        if (trending.length > 0) {
-          setSearchResults(trending);
-          setSelectedCategory('viduki');
-        }
-        setTimeout(() => setShowVidukiModal(false), 1400);
-      } else {
-        setVidukiTestResult({ success: false, message: res.message || 'Failed to save configuration.' });
-      }
-    } catch (err: any) {
-      setVidukiTestResult({ success: false, message: err?.message || 'Error saving settings.' });
-    } finally {
-      setIsSavingViduki(false);
-    }
-  };
-
-  // Test Viduki API connection
-  const handleTestVidukiConnection = async () => {
-    setIsTestingViduki(true);
-    setVidukiTestResult(null);
-    try {
-      const res = await testVidukiConnection({
-        apiKey: vidukiKeyInput.trim(),
-        baseUrl: vidukiBaseUrlInput.trim(),
-      });
-      setVidukiTestResult(res);
-    } catch (err: any) {
-      setVidukiTestResult({ success: false, message: err?.message || 'Connection test failed.' });
-    } finally {
-      setIsTestingViduki(false);
-    }
-  };
-
-  // Quick search in Viduki setup modal
-  const handleSearchVidukiTest = async () => {
-    if (!vidukiSearchQuery.trim()) return;
-    setIsSearchingVidukiTest(true);
-    try {
-      const results = await searchVidukiMovies(vidukiSearchQuery.trim(), {
-        apiKey: vidukiKeyInput.trim() || vidukiConfig.apiKey,
-        baseUrl: vidukiBaseUrlInput.trim() || vidukiConfig.baseUrl,
-        embedTemplate: vidukiTemplateInput.trim() || vidukiConfig.embedTemplate,
-        enabled: true,
-        preferredQuality: vidukiQualityInput,
-      });
-      setVidukiTestMovies(results);
-    } catch (err) {
-      console.warn('Viduki test search error:', err);
-    } finally {
-      setIsSearchingVidukiTest(false);
-    }
-  };
-
-  // Universal Search Handler (Viduki.net & YouTube ONLY)
+  // Universal Search Handler (TMDB & YouTube Cinema)
   const handlePerformSearch = async (query: string) => {
     const trimmed = query.trim();
     if (!trimmed) {
-      if (selectedCategory === 'viduki') {
-        setSearchResults(FEATURED_VIDUKI_CATALOG);
-      } else if (selectedCategory === 'classics') {
+      if (selectedCategory === 'classics') {
         setSearchResults(FEATURED_MOVIES);
-      } else {
-        const ytDefaults = await searchYouTubeDirect('trending music video relax 4k');
+      } else if (selectedCategory === 'youtube') {
+        const ytDefaults = await searchYouTubeDirect('trending relax 4k');
         setSearchResults(ytDefaults);
+      } else {
+        const trending = await fetchTmdbTrending();
+        setSearchResults(trending.length > 0 ? trending : FEATURED_MOVIES);
       }
       return;
     }
@@ -1270,12 +1018,17 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               (m.description && m.description.toLowerCase().includes(q))
           )
         );
-      } else if (selectedCategory === 'viduki') {
-        const vidukiResults = await searchVidukiMovies(trimmed, vidukiConfig);
-        setSearchResults(vidukiResults);
-      } else {
+      } else if (selectedCategory === 'youtube') {
         const ytResults = await searchYouTubeDirect(trimmed);
         setSearchResults(ytResults);
+      } else {
+        const tmdbResults = await searchTmdbMovies(trimmed);
+        if (tmdbResults.length > 0) {
+          setSearchResults(tmdbResults);
+        } else {
+          const ytResults = await searchYouTubeDirect(`${trimmed} full movie hd`);
+          setSearchResults(ytResults.length > 0 ? ytResults : FEATURED_MOVIES);
+        }
       }
     } catch (err) {
       console.warn('Movie search error:', err);
@@ -1284,7 +1037,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     }
   };
 
-  // Filter catalog by source: Viduki, Instant Classics, YouTube, or Watchlist
+  // Filter catalog by source: TMDB, Instant Classics, YouTube, or Watchlist
   const filterByCategory = async (cat: string) => {
     setSelectedCategory(cat);
     if (cat === 'watchlist') {
@@ -1307,18 +1060,18 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       }
       return;
     }
-    if (cat === 'viduki') {
+    if (cat === 'tmdb') {
       setIsSearching(true);
       try {
         if (searchQuery.trim()) {
-          const results = await searchVidukiMovies(searchQuery.trim(), vidukiConfig);
-          setSearchResults(results);
+          const results = await searchTmdbMovies(searchQuery.trim());
+          setSearchResults(results.length > 0 ? results : FEATURED_MOVIES);
         } else {
-          setSearchResults(FEATURED_VIDUKI_CATALOG);
+          const trending = await fetchTmdbTrending();
+          setSearchResults(trending.length > 0 ? trending : FEATURED_MOVIES);
         }
       } catch (err) {
-        console.warn('Viduki category error:', err);
-        setSearchResults(FEATURED_VIDUKI_CATALOG);
+        setSearchResults(FEATURED_MOVIES);
       } finally {
         setIsSearching(false);
       }
@@ -1362,12 +1115,11 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     }
   };
 
-  // Surprise random date night movie picker (Viduki or YouTube ONLY)
+  // Surprise random date night movie picker (TMDB or YouTube)
   const handlePickSurpriseMovie = async () => {
     setIsSearching(true);
     try {
-      const category = selectedCategory === 'youtube' ? 'youtube' : 'viduki';
-      const surprise = await getSurpriseMovie(category);
+      const surprise = await getSurpriseMovie(selectedCategory);
       if (surprise) {
         handleChangeMovie(surprise);
       }
@@ -1394,62 +1146,35 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     setIsSearching(false);
   };
 
-  // Alexa-style Haven Voice Assistant for Watch Party (Viduki.net & YouTube ONLY)
+  // Haven Voice Assistant for Watch Party (TMDB & YouTube Cinema)
   const handleVoicePlayVideo = useCallback(
     async (query: string, rawText?: string) => {
       setIsSearching(true);
       setSearchQuery(query);
       setShowCatalog(true);
-      const combined = `${query} ${rawText || ''}`.toLowerCase();
 
       try {
-        // 1. If voice command specifically asks for Viduki, mentions movie/series/show, or matches a Viduki title / TMDB / IMDb ID
-        const wantsViduki =
-          combined.includes('viduki') ||
-          combined.includes('movie') ||
-          combined.includes('series') ||
-          combined.includes('film') ||
-          combined.includes('cinema') ||
-          combined.includes('server') ||
-          combined.includes('season') ||
-          combined.includes('episode') ||
-          /^tt\d+/i.test(query.trim()) ||
-          /^\d+$/.test(query.trim()) ||
-          FEATURED_VIDUKI_CATALOG.some((m) => combined.includes(m.title.toLowerCase()));
-
-        if (wantsViduki) {
-          setSelectedCategory('viduki');
-          const cleanQuery = query
-            .replace(/\b(on|from)?\s*viduki(\.net)?\b/gi, '')
-            .replace(/\b(the\s+)?(movie|film|series|show)\b/gi, '')
-            .trim() || query;
-          const vidukiResults = await searchVidukiMovies(cleanQuery, vidukiConfig);
-          if (vidukiResults.length > 0) {
-            setSearchResults(vidukiResults);
-            handleChangeMovie(vidukiResults[0]);
-            return;
-          }
-        }
-
-        // 2. Query YouTube direct (e.g. "play lofi girl", "play song bien")
-        setSelectedCategory('youtube');
-        const cleanYtQuery = query
-          .replace(/\b(on|from)?\s*youtube\b/gi, '')
-          .replace(/\b(the\s+)?(video|song|clip|trailer)\b/gi, '')
+        const cleanQuery = query
+          .replace(/\b(on|from)?\s*(tmdb|youtube)(\.net)?\b/gi, '')
+          .replace(/\b(the\s+)?(movie|film|series|show)\b/gi, '')
           .trim() || query;
-        const ytResults = await searchYouTubeDirect(cleanYtQuery);
-        if (ytResults.length > 0) {
-          setSearchResults(ytResults);
-          handleChangeMovie(ytResults[0]);
+
+        // Search TMDB first
+        const tmdbResults = await searchTmdbMovies(cleanQuery);
+        if (tmdbResults.length > 0) {
+          setSelectedCategory('tmdb');
+          setSearchResults(tmdbResults);
+          handleChangeMovie(tmdbResults[0]);
           return;
         }
 
-        // 3. Fallback: Check Viduki as well
-        const fallbackViduki = await searchVidukiMovies(query, vidukiConfig);
-        if (fallbackViduki.length > 0) {
-          setSelectedCategory('viduki');
-          setSearchResults(fallbackViduki);
-          handleChangeMovie(fallbackViduki[0]);
+        // Search YouTube direct
+        const ytResults = await searchYouTubeDirect(cleanQuery);
+        if (ytResults.length > 0) {
+          setSelectedCategory('youtube');
+          setSearchResults(ytResults);
+          handleChangeMovie(ytResults[0]);
+          return;
         }
       } catch (err) {
         console.warn('Voice play video failed:', err);
@@ -1457,7 +1182,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         setIsSearching(false);
       }
     },
-    [handleChangeMovie, vidukiConfig]
+    [handleChangeMovie]
   );
 
   const voiceAssistant = useHavenVoiceAssistant({
@@ -1757,8 +1482,8 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
           <span>Try Saying:</span>
         </span>
         {[
-          { label: '“Play Deadpool on Viduki”', query: 'Deadpool' },
-          { label: '“Play Titanic on Viduki”', query: 'Titanic' },
+          { label: '“Play Deadpool on TMDB”', query: 'Deadpool' },
+          { label: '“Play Titanic on TMDB”', query: 'Titanic' },
           { label: '“Watch Game of Thrones”', query: 'Game of Thrones' },
           { label: '“Play Inception”', query: 'Inception' },
           { label: '“Play Lofi Girl on YouTube”', query: 'lofi hip hop radio' },
@@ -1783,22 +1508,22 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         ))}
       </div>
 
-      {/* Primary Source Navigation Tabs & Viduki Config Button */}
+      {/* Primary Source Navigation Tabs & TMDB Cinema Info Button */}
       <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-900">
         <div className="flex items-center gap-2">
           <button
             type="button"
-            onClick={() => filterByCategory('viduki')}
+            onClick={() => filterByCategory('tmdb')}
             className={`px-3.5 py-1.5 rounded-xl font-bold text-xs flex items-center gap-1.5 transition-all cursor-pointer shadow-sm ${
-              selectedCategory === 'viduki'
+              selectedCategory === 'tmdb'
                 ? 'bg-rose-600 text-white shadow-rose-600/30'
                 : 'bg-slate-900 text-slate-400 hover:bg-slate-800 hover:text-white border border-slate-800'
             }`}
           >
             <Film className="w-3.5 h-3.5" />
-            <span>🎬 Blockbusters & Series</span>
+            <span>🎬 TMDB Cinema & Series</span>
             <span className="text-[10px] px-1.5 py-0.2 bg-black/40 rounded-md font-mono text-rose-200">
-              S{vidukiConfig.defaultServer || 1} Fast
+              TMDB HD
             </span>
           </button>
 
@@ -1861,12 +1586,12 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
 
           <button
             type="button"
-            onClick={() => setShowVidukiModal(true)}
+            onClick={() => setShowTmdbInfoModal(true)}
             className="px-3 py-1.5 bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-slate-800 flex items-center gap-1.5 transition cursor-pointer"
-            title="Configure Viduki API keys, multi-servers 1–4, and player settings"
+            title="TMDB Cinema & Multi-Source HD Player"
           >
-            <Key className="w-3.5 h-3.5 text-rose-400" />
-            <span className="hidden sm:inline">Viduki Settings</span>
+            <Sparkles className="w-3.5 h-3.5 text-rose-400" />
+            <span className="hidden sm:inline">TMDB Cinema</span>
           </button>
         </div>
       </div>
@@ -1923,7 +1648,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
             <span>Direct HD streams from Internet Archive & remastered classics. Loads in milliseconds.</span>
           </div>
         </div>
-      ) : selectedCategory === 'viduki' ? (
+      ) : selectedCategory === 'tmdb' ? (
         <div className="space-y-2.5 bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
           <form
             onSubmit={(e) => {
@@ -1946,7 +1671,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   setSearchQuery(val);
                   handlePerformSearch(val);
                 }}
-                placeholder="Search Viduki movies, shows, or IMDb ID (e.g. Deadpool, Titanic, Inception, tt1375666)..."
+                placeholder="Search TMDB movies, series, shows (e.g. Deadpool, Titanic, Inception, Interstellar)..."
                 className="w-full pl-9 pr-8 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500"
               />
               {searchQuery && (
@@ -1966,12 +1691,12 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
             <div className="flex items-center gap-1.5">
               <button
                 type="submit"
-                id="btn-search-viduki"
+                id="btn-search-tmdb"
                 disabled={isSearching}
                 className="px-4 py-2.5 bg-rose-600 hover:bg-rose-500 text-white font-bold text-xs rounded-xl shadow-md shadow-rose-600/25 transition cursor-pointer shrink-0 flex items-center justify-center gap-1.5"
               >
                 {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                <span>Search Viduki</span>
+                <span>Search TMDB</span>
               </button>
 
               <button
@@ -1993,11 +1718,10 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
             </span>
             {[
               { label: 'All Movies', q: '' },
-              { label: '🔥 Trending 2024/25', q: 'trending' },
-              { label: '🦸 Action & Marvel', q: 'action' },
+              { label: '🔥 Trending', q: 'trending' },
+              { label: '🦸 Action & Sci-Fi', q: 'action' },
               { label: '🍿 Blockbusters', q: 'blockbuster' },
-              { label: '🎨 Animation & Kids', q: 'animation' },
-              { label: '🚀 Sci-Fi & Fantasy', q: 'sci-fi' },
+              { label: '🎨 Animation', q: 'animation' },
               { label: '😂 Comedy', q: 'comedy' },
               { label: '❤️ Romance', q: 'romance' },
               { label: '📺 TV Series', q: 'series' },
@@ -2020,32 +1744,19 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
             ))}
           </div>
 
-          {/* Viduki Active Server Selector */}
+          {/* TMDB Engine Indicator */}
           <div className="flex flex-wrap items-center justify-between gap-2 pt-1 border-t border-slate-800/60 text-[11px]">
-            <div className="flex items-center gap-1.5">
-              <span className="text-slate-500 text-[10px] font-semibold uppercase tracking-wider">
-                Viduki Server:
+            <div className="flex items-center gap-2">
+              <span className="px-2 py-0.5 rounded bg-rose-500/20 text-rose-300 font-bold text-[10px] border border-rose-500/30">
+                TMDB Cinema HD
               </span>
-              {[1, 2, 3, 4].map((srv) => (
-                <button
-                  key={srv}
-                  type="button"
-                  onClick={() => {
-                    setVidukiServerInput(srv as 1 | 2 | 3 | 4);
-                    setVidukiConfig((prev) => ({ ...prev, defaultServer: srv as 1 | 2 | 3 | 4 }));
-                  }}
-                  className={`px-2 py-0.5 rounded-md text-[10px] font-bold transition cursor-pointer ${
-                    (vidukiConfig.defaultServer || 1) === srv
-                      ? 'bg-rose-600 text-white ring-1 ring-rose-400'
-                      : 'bg-slate-950 text-slate-400 hover:text-white border border-slate-800'
-                  }`}
-                >
-                  Server {srv}
-                </button>
-              ))}
+              <span className="text-[10px] text-emerald-400 flex items-center gap-1">
+                <span className="w-1.5 h-1.5 rounded-full bg-emerald-400 animate-pulse" />
+                100% Ad-Free • Instant Playback
+              </span>
             </div>
             <span className="text-[10px] text-slate-400">
-              Auto-Failover Protection Active
+              Synced Real-time Playback
             </span>
           </div>
         </div>
@@ -2197,9 +1908,9 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       <div className="flex items-center justify-between px-1 pt-1">
         <div className="flex items-center gap-2">
           <span className="text-xs sm:text-sm font-bold text-white font-serif tracking-tight flex items-center gap-1.5">
-            {selectedCategory === 'viduki' ? (
+            {selectedCategory === 'tmdb' ? (
               <>
-                <span>🎬 Blockbusters & Series (Fast Streams)</span>
+                <span>🎬 TMDB Cinema & Series (HD Streams)</span>
                 <span className="text-[10px] font-semibold text-rose-300 bg-rose-950/60 px-2 py-0.5 rounded-full border border-rose-500/30">
                   {searchResults.length} {searchResults.length === 1 ? 'title' : 'titles'}
                 </span>
@@ -2230,8 +1941,8 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         </div>
 
         <span className="text-[10px] text-slate-400 hidden sm:inline">
-          {selectedCategory === 'viduki'
-            ? `Server ${vidukiConfig.defaultServer || 1} (VidLink Fast CDN) • Auto-Sync Active`
+          {selectedCategory === 'tmdb'
+            ? 'TMDB Cinema HD • 100% Ad-Free • Instant Playback'
             : selectedCategory === 'classics'
             ? 'Zero-buffering direct streaming HD'
             : selectedCategory === 'youtube'
@@ -2245,30 +1956,32 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         <div className="py-12 px-4 text-center rounded-2xl bg-slate-900/40 border border-slate-800/80 space-y-3">
           <Clapperboard className="w-10 h-10 text-slate-600 mx-auto" />
           <h4 className="text-sm font-bold text-slate-300">
-            No {selectedCategory === 'viduki' ? 'blockbuster titles' : selectedCategory === 'classics' ? 'classic movies' : 'YouTube videos'} found {searchQuery ? `for "${searchQuery}"` : ''}
+            No {selectedCategory === 'classics' ? 'classic movies' : selectedCategory === 'youtube' ? 'YouTube videos' : 'movies'} found {searchQuery ? `for "${searchQuery}"` : ''}
           </h4>
           <p className="text-xs text-slate-400 max-w-md mx-auto">
-            {selectedCategory === 'viduki'
-              ? 'Try searching by title (e.g. Deadpool, Titanic, Inception), TMDB ID (e.g. 533535), or IMDb ID (e.g. tt6263850).'
-              : selectedCategory === 'classics'
+            {selectedCategory === 'classics'
               ? 'Try searching for Cary Grant, Audrey Hepburn, romantic comedy, Charlie Chaplin, or screwball romance.'
-              : 'Try searching for music videos, podcast channels, video clips, or gaming highlights.'}
+              : selectedCategory === 'youtube'
+              ? 'Try searching for music videos, podcast channels, video clips, or gaming highlights.'
+              : 'Try searching by title (e.g. Deadpool, Titanic, Inception, Interstellar), or pick from featured categories above.'}
           </p>
           <button
             type="button"
             onClick={() => {
               setSearchQuery('');
-              if (selectedCategory === 'viduki') {
-                setSearchResults(FEATURED_VIDUKI_CATALOG);
-              } else if (selectedCategory === 'classics') {
+              if (selectedCategory === 'classics') {
                 setSearchResults(FEATURED_MOVIES);
+              } else if (selectedCategory === 'youtube') {
+                searchYouTubeDirect('trending relax 4k').then(setSearchResults);
               } else {
-                searchYouTubeDirect('trending music video relax 4k').then(setSearchResults);
+                fetchTmdbTrending().then((res) => {
+                  setSearchResults(res.length > 0 ? res : FEATURED_MOVIES);
+                });
               }
             }}
             className="px-3.5 py-1.5 bg-rose-600 hover:bg-rose-500 text-white rounded-xl text-xs font-semibold shadow transition cursor-pointer"
           >
-            {selectedCategory === 'viduki' ? 'Reset to Featured Catalog' : selectedCategory === 'classics' ? 'Reset to Fast Classics' : 'Load Trending YouTube'}
+            {selectedCategory === 'classics' ? 'Reset to Fast Classics' : selectedCategory === 'youtube' ? 'Load Trending YouTube' : 'Reset to TMDB Trending'}
           </button>
         </div>
       ) : (
@@ -2329,7 +2042,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
             {searchResults.map((movie, idx) => {
               const isActive = currentMedia.id === movie.id;
               const isInWatchlist = watchlist.some((w) => w.movie.id === movie.id);
-              const isVidukiItem = movie.source === 'viduki' || selectedCategory === 'viduki';
+              const isTmdbItem = movie.source === 'tmdb' || selectedCategory === 'tmdb' || Boolean(movie.tmdbId);
             const isSeries = isSeriesItem(movie);
 
             return (
@@ -2350,7 +2063,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                       handleChangeMovie(movie);
                     }
                   }}
-                  className={`relative w-full overflow-hidden bg-slate-950 cursor-pointer ${isVidukiItem ? 'aspect-[2/3]' : 'aspect-video'}`}
+                  className={`relative w-full overflow-hidden bg-slate-950 cursor-pointer ${isTmdbItem ? 'aspect-[2/3]' : 'aspect-video'}`}
                 >
                   <img
                     src={movie.thumbnailUrl || movie.backdropUrl || 'https://images.unsplash.com/photo-1485846234645-a62644f84728?w=500'}
@@ -2383,7 +2096,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                       <span className="bg-indigo-950/90 border border-indigo-500/40 text-[9px] font-bold text-indigo-300 px-2 py-0.5 rounded-md shadow-sm">
                         🍿 Instant HD
                       </span>
-                    ) : isVidukiItem ? (
+                    ) : isTmdbItem ? (
                       <span className={`${isSeries ? 'bg-purple-950/90 border-purple-500/40 text-purple-200' : 'bg-rose-950/90 border-rose-500/40 text-rose-300'} border text-[9px] font-bold px-2 py-0.5 rounded-md shadow-sm flex items-center gap-1`}>
                         {isSeries ? (
                           <>
@@ -2391,18 +2104,12 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                             <span>TV Series 📺</span>
                           </>
                         ) : (
-                          <span>VidLink 🎬</span>
+                          <span>TMDB HD 🎬</span>
                         )}
                       </span>
                     ) : (
                       <span className="bg-red-950/90 border border-red-500/40 text-[9px] font-bold text-red-300 px-2 py-0.5 rounded-md shadow-sm">
                         🔴 YouTube
-                      </span>
-                    )}
-
-                    {isVidukiItem && (
-                      <span className="bg-black/80 backdrop-blur-xs text-[9px] font-bold text-slate-300 px-1.5 py-0.5 rounded border border-slate-700">
-                        Server {movie.server || vidukiConfig.defaultServer || 1}
                       </span>
                     )}
                   </div>
@@ -2516,20 +2223,6 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                         </span>
                       </button>
                     )}
-
-                    {/* Pop-out Tab for Viduki */}
-                    {isVidukiItem && (movie.url || movie.embedUrl) && (
-                      <a
-                        href={movie.url || movie.embedUrl}
-                        target="_blank"
-                        rel="noopener noreferrer"
-                        className="py-1.5 px-2 bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white rounded-xl text-xs font-semibold border border-slate-700 flex items-center gap-1 transition cursor-pointer shrink-0"
-                        title="Open stream in a new tab on viduki.net"
-                      >
-                        <ExternalLink className="w-3 h-3 text-rose-400" />
-                        <span className="text-[10px] hidden sm:inline">Pop-out</span>
-                      </a>
-                    )}
                   </div>
                 </div>
               </div>
@@ -2611,7 +2304,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                     ? (isFriends
                         ? `Watching with ${groupEmoji ? `${groupEmoji} ` : ''}${effectiveGroupName} (${squadMembersCount} in squad)`
                         : `Watching with ${partner ? partner.name : partnerName}`)
-                    : 'Search YouTube & Viduki or pick any movie below'}
+                    : 'Search YouTube & TMDB or pick any movie below'}
                 </span>
                 {isPlayerActive && currentMedia.genre && (
                   <span className="hidden sm:inline text-slate-500">• {currentMedia.genre}</span>
@@ -2915,7 +2608,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               <div className="absolute top-3 right-3 z-30">
                 <button
                   type="button"
-                  onClick={() => switchToFallbackApi()}
+                  onClick={() => switchToFallbackStream()}
                   className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xl border border-rose-400/40 flex items-center gap-1.5 transition cursor-pointer"
                   title="Switch to guaranteed HD cinema stream"
                 >
@@ -2943,8 +2636,8 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 </div>
               )}
             </div>
-          ) : (currentMedia.type === 'embed' || currentMedia.source === 'viduki' || Boolean(currentMedia.embedUrl)) ? (
-            /* 3. Embedded Synced Viduki / VidLink Cinema Player */
+          ) : (currentMedia.type === 'embed' || currentMedia.source === 'tmdb' || Boolean(currentMedia.embedUrl)) ? (
+            /* 3. Embedded Synced TMDB Cinema Player */
             <div className={`w-full h-full aspect-video ${isImmersive ? 'max-h-full' : 'max-h-[62vh]'} relative bg-black flex items-center justify-center overflow-hidden`}>
               {isEmbedSuspended ? (
                 <div
@@ -2961,8 +2654,8 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 </div>
               ) : (
                 <iframe
-                  ref={vidukiIframeRef}
-                  id="viduki-cinema-iframe"
+                  ref={cinemaIframeRef}
+                  id="tmdb-cinema-iframe"
                   src={currentMedia.embedUrl || currentMedia.url}
                   title={currentMedia.title}
                   className="w-full h-full border-0"
@@ -2971,13 +2664,13 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 />
               )}
 
-              {/* Fallback / CAPTCHA bypass helper overlay */}
+              {/* Fallback helper overlay */}
               <div className="absolute top-3 right-3 z-30">
                 <button
                   type="button"
-                  onClick={() => switchToFallbackApi()}
+                  onClick={() => switchToFallbackStream()}
                   className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xl border border-rose-400/40 flex items-center gap-1.5 transition cursor-pointer"
-                  title="Switch to guaranteed YouTube / Archive.org HD stream"
+                  title="Switch to guaranteed HD stream"
                 >
                   <RefreshCw className="w-3.5 h-3.5 animate-spin" />
                   <span>🎬 Switch to HD Stream</span>
@@ -3000,7 +2693,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 </div>
               )}
 
-              {/* Viduki Cinema Paused Overlay */}
+              {/* TMDB Cinema Paused Overlay */}
               {!isPlaying && (
                 <div
                   onClick={() => togglePlayPause(true)}
@@ -3045,13 +2738,13 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 </div>
               )}
 
-              {/* Viduki Cinema Floating Top Control Bar */}
+              {/* TMDB Cinema Floating Top Control Bar */}
               <div className="absolute top-3 left-3 right-3 flex items-center justify-between gap-2 z-20 pointer-events-auto flex-wrap">
                 {/* Left: Source Badge & Current Server */}
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-950/90 backdrop-blur-md rounded-xl border border-rose-500/30 text-[10px] text-rose-300 shadow-xl">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                   <span className="font-bold text-white tracking-wide">
-                    {currentMedia.server === 1 ? 'VidLink Clean HD' : currentMedia.server === 3 ? 'Vidsrc Global' : 'Viduki Cinema'}
+                    {currentMedia.server === 2 ? 'TMDB Fast CDN' : currentMedia.server === 3 ? 'TMDB Direct Stream' : currentMedia.server === 4 ? 'TMDB Mirror HD' : 'TMDB Cinema HD'}
                   </span>
                   <span className="text-slate-400 border-l border-slate-700 pl-1.5">
                     Server {currentMedia.server || 1}
@@ -3107,17 +2800,17 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                     Server:
                   </span>
                   {[
-                    { id: 1, label: 'S1 Clean', title: 'VidLink Pro Clean Stream (Recommended • Ad-Free)' },
-                    { id: 2, label: 'S2 Viduki', title: 'Viduki Cinema Server 1' },
-                    { id: 3, label: 'S3 Vidsrc', title: 'Vidsrc Global Stream' },
-                    { id: 4, label: 'S4 Mirror', title: 'Viduki Mirror Server 2' },
+                    { id: 1, label: 'S1 TMDB HD', title: 'TMDB Primary Stream (Recommended • Ad-Free)' },
+                    { id: 2, label: 'S2 Fast', title: 'TMDB Fast CDN Stream' },
+                    { id: 3, label: 'S3 Direct', title: 'TMDB Direct Stream' },
+                    { id: 4, label: 'S4 Mirror', title: 'TMDB Mirror CDN' },
                   ].map((srv) => {
                     const isActive = (currentMedia.server || 1) === srv.id;
                     return (
                       <button
                         key={srv.id}
                         type="button"
-                        onClick={() => handleSwitchVidukiServer(srv.id as 1 | 2 | 3 | 4)}
+                        onClick={() => handleSwitchStreamServer(srv.id as 1 | 2 | 3 | 4)}
                         className={`px-2 py-0.5 rounded-lg text-[10px] font-bold transition-all cursor-pointer ${
                           isActive
                             ? 'bg-rose-600 text-white shadow-md shadow-rose-600/40 ring-1 ring-rose-400'
@@ -3139,13 +2832,13 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                           const currSeason = currentMedia.season || 1;
                           const currEp = currentMedia.episode || 1;
                           if (currEp > 1) {
-                            handleSwitchVidukiEpisode(currSeason, currEp - 1);
+                            handleSwitchEpisode(currSeason, currEp - 1);
                           } else if (currSeason > 1) {
                             // Jump to previous season's last episode
                             const seasons = getSeriesSeasons(currentMedia);
                             const prevSeasonObj = seasons.find((s) => s.seasonNumber === currSeason - 1);
                             const prevEpCount = prevSeasonObj?.episodeCount || 10;
-                            handleSwitchVidukiEpisode(currSeason - 1, prevEpCount);
+                            handleSwitchEpisode(currSeason - 1, prevEpCount);
                           }
                         }}
                         disabled={(currentMedia.season || 1) <= 1 && (currentMedia.episode || 1) <= 1}
@@ -3178,13 +2871,11 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                           const maxSeason = seasons.length > 0 ? seasons[seasons.length - 1].seasonNumber : 1;
 
                           if (currEp < totalEpisodesInSeason) {
-                            handleSwitchVidukiEpisode(currSeason, currEp + 1);
+                            handleSwitchEpisode(currSeason, currEp + 1);
                           } else if (currSeason < maxSeason) {
-                            // Next Season, Episode 1!
-                            handleSwitchVidukiEpisode(currSeason + 1, 1);
+                            handleSwitchEpisode(currSeason + 1, 1);
                           } else {
-                            // Final episode of final season: loop back to S1E1
-                            handleSwitchVidukiEpisode(1, 1);
+                            handleSwitchEpisode(1, 1);
                           }
                         }}
                         className="px-1.5 py-0.5 rounded bg-slate-900 text-slate-300 hover:text-white text-[9px] font-semibold cursor-pointer"
@@ -3198,21 +2889,21 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   {/* Quick Fallback Switcher */}
                   <button
                     type="button"
-                    onClick={() => switchToFallbackApi()}
+                    onClick={() => switchToFallbackStream()}
                     className="px-2 py-0.5 rounded-lg bg-slate-800/80 hover:bg-slate-700 text-slate-300 hover:text-amber-300 text-[10px] font-medium border border-slate-700 transition cursor-pointer flex items-center gap-1"
-                    title="If Viduki servers are buffering or 404, switch to cinema fallback"
+                    title="If stream is buffering, switch to cinema fallback"
                   >
                     <RefreshCw className="w-2.5 h-2.5" />
                     <span className="hidden sm:inline">Fallback</span>
                   </button>
 
-                  {/* Pop-out Stream (Plays directly in standalone tab without editor sandbox) */}
+                  {/* Pop-out Stream */}
                   <a
                     href={currentMedia.embedUrl || currentMedia.url}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="px-2 py-0.5 rounded-lg bg-rose-600 hover:bg-rose-500 text-white text-[10px] font-semibold transition cursor-pointer flex items-center gap-1 shadow"
-                    title="Open Viduki Stream in a new tab without sandbox restrictions"
+                    title="Open Stream in a new tab"
                   >
                     <ExternalLink className="w-2.5 h-2.5" />
                     <span className="hidden sm:inline">Pop-out</span>
@@ -3694,7 +3385,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         </div>
 
         {/* =========================================================================
-            DISCOVER MOVIES DRAWER: VIDUKI MOVIES, YOUTUBE SEARCH & HAVEN VOICE ONLY
+            DISCOVER MOVIES DRAWER: TMDB CINEMA MOVIES, YOUTUBE SEARCH & HAVEN VOICE ONLY
         ========================================================================= */}
         {showCatalog && renderCatalogContent(false)}
       </>
@@ -3711,20 +3402,21 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
           series={seriesModalItem}
           currentActiveMedia={currentMedia}
           onSelectEpisode={handleSelectSeriesEpisode}
-          currentServer={(vidukiConfig.defaultServer || 1) as 1 | 2 | 3 | 4}
+          currentServer={(currentMedia.server || 1) as 1 | 2 | 3 | 4}
           onServerChange={(srv) => {
-            setVidukiServerInput(srv);
-            setVidukiConfig((prev) => ({ ...prev, defaultServer: srv }));
+            if (currentMedia) {
+              handleSwitchStreamServer(srv);
+            }
           }}
           isFriends={isFriends}
         />
 
         {/* =========================================================================
-            VIDUKI.NET MOVIE STREAMING API SETUP MODAL
+            TMDB CINEMA INFO & STREAMING MODAL
         ========================================================================= */}
-        {showVidukiModal && (
+        {showTmdbInfoModal && (
           <div
-            id="modal-viduki-settings"
+            id="modal-tmdb-info"
             className="fixed inset-0 z-50 flex items-center justify-center p-3 sm:p-4 bg-black/85 backdrop-blur-md animate-in fade-in"
           >
             <div className="bg-slate-900 border border-rose-500/40 rounded-2xl w-full max-w-xl shadow-2xl overflow-hidden flex flex-col max-h-[92vh]">
@@ -3736,343 +3428,99 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   </div>
                   <div>
                     <div className="flex items-center gap-2">
-                      <h3 className="text-sm font-bold text-white">Viduki.net Movie API</h3>
-                      {vidukiConfig.apiKey ? (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 font-semibold flex items-center gap-1">
-                          <Check className="w-3 h-3" /> Connected
-                        </span>
-                      ) : (
-                        <span className="text-[10px] px-2 py-0.5 rounded-full bg-amber-950/80 border border-amber-500/40 text-amber-300 font-semibold">
-                          Setup Required
-                        </span>
-                      )}
+                      <h3 className="text-sm font-bold text-white">TMDB Cinema Streaming Engine</h3>
+                      <span className="text-[10px] px-2 py-0.5 rounded-full bg-emerald-950/90 border border-emerald-500/40 text-emerald-300 font-semibold flex items-center gap-1">
+                        <Check className="w-3 h-3" /> 100% Ad-Free Active
+                      </span>
                     </div>
                     <p className="text-[11px] text-slate-400">
-                      Fetch, search & stream real movies directly from Viduki into your Watch Party
+                      Live TMDB catalog integration with seamless real-time synchronized playback
                     </p>
                   </div>
                 </div>
 
                 <button
                   type="button"
-                  onClick={() => setShowVidukiModal(false)}
+                  onClick={() => setShowTmdbInfoModal(false)}
                   className="p-1.5 rounded-xl text-slate-400 hover:text-white hover:bg-slate-800 transition cursor-pointer"
                 >
                   <X className="w-4 h-4" />
                 </button>
               </div>
 
-              {/* Modal Body */}
-              <div className="p-4 sm:p-5 overflow-y-auto space-y-4 text-xs">
-                {/* Guide Box */}
-                <div className="p-3 bg-gradient-to-r from-rose-950/40 to-slate-950 rounded-xl border border-rose-500/25 space-y-1.5">
-                  <div className="flex items-center gap-2 text-rose-300 font-semibold text-xs">
-                    <Sparkles className="w-4 h-4 text-rose-400" />
-                    <span>How to stream movies from Viduki.net</span>
+              {/* Modal Content */}
+              <div className="p-4 sm:p-6 overflow-y-auto space-y-4 text-xs text-slate-300">
+                <div className="p-3.5 bg-rose-950/30 border border-rose-500/30 rounded-xl space-y-2">
+                  <div className="flex items-center gap-2 text-rose-300 font-bold">
+                    <Sparkles className="w-4 h-4" />
+                    <span>How TMDB Cinema Works</span>
                   </div>
-                  <p className="text-[11px] text-slate-300 leading-relaxed">
-                    Paste your personal <strong>Viduki API Key</strong> below. Once saved, it will be synchronized across your sanctuary so both you and {partner ? partner.name : partnerName} can search movies by title or IMDb ID (e.g. <code className="bg-slate-900 px-1 py-0.5 rounded text-rose-300 font-mono text-[10px]">tt1375666</code>) and watch together in real time!
+                  <p className="text-slate-300 leading-relaxed text-[11px]">
+                    All movies and series are loaded directly from TMDB’s vast catalog. Playback starts immediately with zero ads, no external popups, and real-time playback synchronization between you and your partner.
                   </p>
                 </div>
 
-                {/* API Key Input */}
-                <div className="space-y-1.5">
-                  <label className="text-xs font-semibold text-slate-200 flex items-center justify-between">
-                    <span className="flex items-center gap-1.5">
-                      <Key className="w-3.5 h-3.5 text-rose-400" />
-                      Viduki API Key
-                    </span>
-                    {vidukiConfig.apiKey && (
-                      <span className="text-[10px] text-emerald-400 font-normal">
-                        Key saved on server
-                      </span>
-                    )}
-                  </label>
-                  <div className="relative">
-                    <input
-                      id="input-viduki-api-key"
-                      type={showVidukiKey ? 'text' : 'password'}
-                      value={vidukiKeyInput}
-                      onChange={(e) => setVidukiKeyInput(e.target.value)}
-                      placeholder={vidukiConfig.apiKey ? 'Enter new key or keep saved key...' : 'e.g. viduki_live_sec_...'}
-                      className="w-full px-3.5 py-2.5 bg-slate-950 border border-slate-700 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500 pr-10 font-mono"
-                    />
-                    <button
-                      type="button"
-                      onClick={() => setShowVidukiKey(!showVidukiKey)}
-                      className="absolute right-3 top-1/2 -translate-y-1/2 text-slate-400 hover:text-white cursor-pointer"
-                    >
-                      {showVidukiKey ? <EyeOff className="w-4 h-4" /> : <Eye className="w-4 h-4" />}
-                    </button>
-                  </div>
-                  <p className="text-[10px] text-slate-500">
-                    Your key is securely stored and never shared publicly.
-                  </p>
-                </div>
-
-                {/* Multi-Server & Player Appearance Settings */}
-                <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-3">
-                  <div className="flex items-center justify-between">
-                    <span className="text-xs font-bold text-slate-200 flex items-center gap-1.5">
-                      <Server className="w-3.5 h-3.5 text-rose-400" />
-                      Default Viduki Server
-                    </span>
-                    <span className="text-[10px] text-slate-400">
-                      Servers 1-4 supported with auto-failover
-                    </span>
+                <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
+                  <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
+                    <h4 className="font-bold text-white text-[11px] mb-1 flex items-center gap-1.5">
+                      <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
+                      Zero Popups & Zero Ads
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      Haven Cinema Shield blocks external ad redirects, keeping playback smooth and safe.
+                    </p>
                   </div>
 
-                  {/* Server Buttons */}
-                  <div className="grid grid-cols-4 gap-2">
-                    {[1, 2, 3, 4].map((srv) => (
-                      <button
-                        key={srv}
-                        type="button"
-                        onClick={() => setVidukiServerInput(srv as 1 | 2 | 3 | 4)}
-                        className={`py-2 px-2 rounded-xl text-xs font-bold transition-all cursor-pointer flex flex-col items-center gap-0.5 border ${
-                          vidukiServerInput === srv
-                            ? 'bg-rose-600/25 border-rose-500 text-rose-200 ring-2 ring-rose-500/30'
-                            : 'bg-slate-900 border-slate-800 text-slate-400 hover:text-white hover:border-slate-700'
-                        }`}
-                      >
-                        <span>Server {srv}</span>
-                        <span className="text-[9px] font-normal text-slate-400">viduki.net/{srv}</span>
-                      </button>
-                    ))}
-                  </div>
-
-                  {/* Player Hex Theme Color & Streaming Quality */}
-                  <div className="grid grid-cols-1 sm:grid-cols-2 gap-3 pt-1">
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-200 flex items-center justify-between">
-                        <span className="flex items-center gap-1">
-                          <Palette className="w-3 h-3 text-rose-400" />
-                          Player Theme Color
-                        </span>
-                        <span className="text-[10px] text-slate-400 font-mono">?color={vidukiColorInput}</span>
-                      </label>
-                      <div className="flex items-center gap-2">
-                        <div
-                          className="w-7 h-7 rounded-lg border border-slate-700 shrink-0 shadow-inner"
-                          style={{ backgroundColor: `#${vidukiColorInput.replace('#', '') || 'f43f5e'}` }}
-                        />
-                        <div className="relative flex-1">
-                          <span className="absolute left-2.5 top-1/2 -translate-y-1/2 text-slate-500 font-mono text-xs">#</span>
-                          <input
-                            type="text"
-                            value={vidukiColorInput}
-                            onChange={(e) => setVidukiColorInput(e.target.value.replace('#', '').trim())}
-                            placeholder="f43f5e"
-                            maxLength={8}
-                            className="w-full pl-6 pr-2.5 py-1.5 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-rose-500 font-mono"
-                          />
-                        </div>
-                        {/* Quick Color Swatches */}
-                        {['f43f5e', 'e11d48', '8b5cf6', '06b6d4'].map((col) => (
-                          <button
-                            key={col}
-                            type="button"
-                            onClick={() => setVidukiColorInput(col)}
-                            className="w-5 h-5 rounded-full border border-white/20 shrink-0 hover:scale-110 transition-transform cursor-pointer"
-                            style={{ backgroundColor: `#${col}` }}
-                            title={`#${col}`}
-                          />
-                        ))}
-                      </div>
-                    </div>
-
-                    <div className="space-y-1">
-                      <label className="text-xs font-semibold text-slate-200 flex items-center justify-between">
-                        <span>Streaming Quality</span>
-                      </label>
-                      <select
-                        value={vidukiQualityInput}
-                        onChange={(e) => setVidukiQualityInput(e.target.value)}
-                        className="w-full px-3 py-2 bg-slate-900 border border-slate-800 rounded-xl text-xs text-white focus:outline-none focus:border-rose-500 cursor-pointer"
-                      >
-                        <option value="1080p Ultra HD">1080p Full HD (Recommended)</option>
-                        <option value="4K Cinema">4K Cinema / HDR</option>
-                        <option value="720p HD">720p Fast Stream</option>
-                      </select>
-                    </div>
-                  </div>
-
-                  {/* Viduki Stream URL Syntax Specs */}
-                  <div className="p-2.5 bg-slate-900/90 rounded-xl border border-slate-800 space-y-1 text-[11px] font-mono text-slate-300">
-                    <div className="flex items-center justify-between text-slate-400 font-sans text-[10px]">
-                      <span className="font-semibold uppercase tracking-wider text-rose-400">Stream Formats Supported</span>
-                      <span className="text-emerald-400 flex items-center gap-1 font-semibold">
-                        <Check className="w-3 h-3" /> Auto 404 Failover Active
-                      </span>
-                    </div>
-                    <div className="truncate text-slate-300">
-                      <span className="text-slate-500">Movie: </span>
-                      https://viduki.net/<span className="text-rose-400">{vidukiServerInput}</span>/movie/<span className="text-pink-300">{'{id}'}</span>?color=<span className="text-purple-300">{vidukiColorInput || 'f43f5e'}</span>
-                    </div>
-                    <div className="truncate text-slate-300">
-                      <span className="text-slate-500">TV: </span>
-                      https://viduki.net/<span className="text-rose-400">{vidukiServerInput}</span>/tv/<span className="text-pink-300">{'{id}'}</span>/<span className="text-amber-300">{'{season}'}</span>/<span className="text-amber-300">{'{episode}'}</span>?color=<span className="text-purple-300">{vidukiColorInput || 'f43f5e'}</span>
-                    </div>
+                  <div className="p-3 bg-slate-950/80 rounded-xl border border-slate-800">
+                    <h4 className="font-bold text-white text-[11px] mb-1 flex items-center gap-1.5">
+                      <Radio className="w-3.5 h-3.5 text-rose-400" />
+                      Synced Watch Parties
+                    </h4>
+                    <p className="text-[10px] text-slate-400">
+                      Play, pause, seek, and episode selection sync instantly with your partner.
+                    </p>
                   </div>
                 </div>
 
-                {/* Quick Presets / TMDB & IMDb Shortcuts */}
-                <div className="space-y-1.5">
-                  <span className="text-[11px] font-semibold text-slate-300 flex items-center gap-1">
-                    <Sparkles className="w-3.5 h-3.5 text-rose-400" />
-                    Quick Launch Favorites (TMDB IDs)
-                  </span>
+                <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                  <h4 className="font-bold text-white text-[11px]">Featured TMDB Quick Picks:</h4>
                   <div className="flex flex-wrap gap-1.5">
                     {[
-                      { name: 'Titanic', id: '597', type: 'movie' },
-                      { name: 'Game of Thrones', id: '1399', type: 'tv' },
-                      { name: 'Inception', id: '27205', type: 'movie' },
-                      { name: 'Stranger Things', id: '66732', type: 'tv' },
-                      { name: 'Interstellar', id: '157336', type: 'movie' },
-                      { name: 'Breaking Bad', id: '1396', type: 'tv' },
-                    ].map((fav) => (
+                      'Inception',
+                      'Interstellar',
+                      'Spirited Away',
+                      'Breaking Bad',
+                      'Stranger Things',
+                      'Spider-Man',
+                    ].map((title) => (
                       <button
-                        key={fav.id}
+                        key={title}
                         type="button"
                         onClick={() => {
-                          setVidukiSearchQuery(fav.id);
-                          const matching = FEATURED_VIDUKI_CATALOG.find((m) => m.tmdbId === fav.id);
-                          if (matching) {
-                            setVidukiTestMovies([matching]);
-                          }
+                          setSearchQuery(title);
+                          handlePerformSearch(title);
+                          setShowTmdbInfoModal(false);
                         }}
-                        className="px-2.5 py-1 rounded-lg bg-slate-950 hover:bg-slate-800 border border-slate-800 text-[10px] text-slate-300 hover:text-white font-medium flex items-center gap-1 cursor-pointer transition"
+                        className="px-2.5 py-1 rounded-lg bg-slate-900 hover:bg-rose-950/60 border border-slate-800 hover:border-rose-500/40 text-slate-200 text-[11px] font-medium transition cursor-pointer flex items-center gap-1"
                       >
-                        <span>{fav.name}</span>
-                        <span className="text-rose-400 font-mono text-[9px]">#{fav.id}</span>
+                        <Search className="w-3 h-3 text-rose-400" />
+                        <span>{title}</span>
                       </button>
                     ))}
                   </div>
-                </div>
-
-                {/* Test Result Feedback Banner */}
-                {vidukiTestResult && (
-                  <div
-                    className={`p-3 rounded-xl border flex items-start gap-2.5 animate-in fade-in ${
-                      vidukiTestResult.success
-                        ? 'bg-emerald-950/40 border-emerald-500/40 text-emerald-200'
-                        : 'bg-red-950/40 border-red-500/40 text-red-200'
-                    }`}
-                  >
-                    {vidukiTestResult.success ? (
-                      <Check className="w-4 h-4 text-emerald-400 shrink-0 mt-0.5" />
-                    ) : (
-                      <AlertCircle className="w-4 h-4 text-red-400 shrink-0 mt-0.5" />
-                    )}
-                    <div className="text-[11px] leading-relaxed">
-                      <p className="font-semibold">{vidukiTestResult.success ? 'Success!' : 'Verification Notice'}</p>
-                      <p className="opacity-90">{vidukiTestResult.message}</p>
-                    </div>
-                  </div>
-                )}
-
-                {/* Test Live Movie Search Section */}
-                <div className="p-3 bg-slate-950 rounded-xl border border-slate-800 space-y-2">
-                  <span className="font-semibold text-slate-300 block text-xs">
-                    Test Fetching a Movie from Viduki
-                  </span>
-                  <div className="flex gap-2">
-                    <input
-                      type="text"
-                      value={vidukiSearchQuery}
-                      onChange={(e) => setVidukiSearchQuery(e.target.value)}
-                      placeholder="e.g. Inception, Barbie, or tt1375666"
-                      className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-lg text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500"
-                    />
-                    <button
-                      type="button"
-                      onClick={handleSearchVidukiTest}
-                      disabled={isSearchingVidukiTest || !vidukiSearchQuery.trim()}
-                      className="px-3 py-1.5 rounded-lg bg-slate-800 hover:bg-slate-700 disabled:opacity-50 text-slate-200 font-semibold text-xs border border-slate-700 flex items-center gap-1 cursor-pointer transition"
-                    >
-                      {isSearchingVidukiTest ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
-                      <span>Fetch</span>
-                    </button>
-                  </div>
-
-                  {/* Test Search Results */}
-                  {vidukiTestMovies.length > 0 && (
-                    <div className="space-y-2 pt-2 border-t border-slate-800 animate-in fade-in">
-                      {vidukiTestMovies.slice(0, 3).map((m) => (
-                        <div
-                          key={m.id}
-                          className="flex items-center justify-between p-2 rounded-lg bg-slate-900 border border-slate-800 gap-2"
-                        >
-                          <div className="flex items-center gap-2 min-w-0">
-                            <img
-                              src={m.thumbnailUrl}
-                              alt={m.title}
-                              className="w-9 h-12 rounded object-cover shrink-0"
-                            />
-                            <div className="min-w-0">
-                              <h5 className="font-bold text-white text-xs truncate">{m.title}</h5>
-                              <p className="text-[10px] text-slate-400 truncate">{m.genre || 'Viduki Stream'}</p>
-                            </div>
-                          </div>
-                          <button
-                            type="button"
-                            onClick={() => {
-                              handleChangeMovie(m);
-                              setShowVidukiModal(false);
-                            }}
-                            className="px-2.5 py-1 rounded-lg bg-rose-600 hover:bg-rose-500 text-white font-bold text-[10px] flex items-center gap-1 cursor-pointer shrink-0 transition"
-                          >
-                            <Play className="w-3 h-3 fill-white" />
-                            <span>Stream Now</span>
-                          </button>
-                        </div>
-                      ))}
-                    </div>
-                  )}
                 </div>
               </div>
 
-              {/* Modal Footer Controls */}
-              <div className="p-4 bg-slate-950/90 border-t border-slate-800 flex flex-wrap items-center justify-between gap-2">
+              {/* Modal Footer */}
+              <div className="p-4 bg-slate-950/90 border-t border-slate-800 flex items-center justify-end gap-2">
                 <button
                   type="button"
-                  id="btn-test-viduki-api"
-                  onClick={handleTestVidukiConnection}
-                  disabled={isTestingViduki}
-                  className="px-4 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 disabled:opacity-40 text-slate-300 font-semibold text-xs border border-slate-700 flex items-center gap-1.5 cursor-pointer transition"
+                  onClick={() => setShowTmdbInfoModal(false)}
+                  className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 text-white font-semibold text-xs shadow-lg shadow-rose-500/25 flex items-center gap-1.5 cursor-pointer transition active:scale-95"
                 >
-                  {isTestingViduki ? (
-                    <Loader2 className="w-3.5 h-3.5 animate-spin text-rose-400" />
-                  ) : (
-                    <ShieldCheck className="w-3.5 h-3.5 text-emerald-400" />
-                  )}
-                  <span>{isTestingViduki ? 'Testing Connection...' : 'Test Viduki Connection'}</span>
+                  <Check className="w-3.5 h-3.5" />
+                  <span>Back to Cinema</span>
                 </button>
-
-                <div className="flex items-center gap-2">
-                  <button
-                    type="button"
-                    onClick={() => setShowVidukiModal(false)}
-                    className="px-3.5 py-2.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-400 hover:text-slate-200 font-medium text-xs cursor-pointer transition"
-                  >
-                    Cancel
-                  </button>
-
-                  <button
-                    type="button"
-                    id="btn-save-viduki-config"
-                    onClick={handleSaveVidukiConfig}
-                    disabled={isSavingViduki}
-                    className="px-5 py-2.5 rounded-xl bg-gradient-to-r from-rose-500 to-pink-600 hover:from-rose-600 hover:to-pink-700 disabled:opacity-40 text-white font-semibold text-xs shadow-lg shadow-rose-500/25 flex items-center gap-1.5 cursor-pointer transition active:scale-95"
-                  >
-                    {isSavingViduki ? (
-                      <Loader2 className="w-3.5 h-3.5 animate-spin" />
-                    ) : (
-                      <Check className="w-3.5 h-3.5" />
-                    )}
-                    <span>{isSavingViduki ? 'Saving...' : 'Save & Sync with Partner'}</span>
-                  </button>
-                </div>
               </div>
             </div>
           </div>

@@ -84,7 +84,7 @@ export const SeriesSeasonPickerModal: React.FC<SeriesSeasonPickerModalProps> = (
         seasonNumber: selectedSeasonNumber,
         title: `Episode ${i}`,
         duration: '48m',
-        description: `Stream Season ${selectedSeasonNumber}, Episode ${i} of ${cleanSeriesTitle(series.title)} on Viduki.`,
+        description: `Stream Season ${selectedSeasonNumber}, Episode ${i} of ${cleanSeriesTitle(series.title)} on TMDB Cinema.`,
       });
     }
     return {
@@ -184,7 +184,7 @@ export const SeriesSeasonPickerModal: React.FC<SeriesSeasonPickerModalProps> = (
                   {series.description || 'Choose any season and episode below to begin synchronized watch party playback.'}
                 </p>
 
-                {/* Viduki Server Switcher directly in series header */}
+                {/* TMDB Cinema Server Switcher directly in series header */}
                 <div className="flex flex-wrap items-center gap-2 pt-1 text-[11px]">
                   <span className="text-slate-400 text-[10px] uppercase font-semibold tracking-wider flex items-center gap-1">
                     <Server className="w-3 h-3 text-rose-400" />
@@ -438,7 +438,7 @@ export const SeriesSeasonPickerModal: React.FC<SeriesSeasonPickerModalProps> = (
           <div className="text-[11px] text-slate-400 flex items-center gap-2 truncate">
             <span className="font-semibold text-rose-400">{pureTitle}</span>
             <span>•</span>
-            <span>Playing via Viduki Server {selectedServer}</span>
+            <span>Playing via TMDB Cinema HD</span>
           </div>
 
           <button

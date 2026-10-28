@@ -1,5 +1,4 @@
 import { MediaItem } from '../types';
-import { searchVidukiMovies, parseVidukiUrl, getVidukiConfig, FEATURED_VIDUKI_CATALOG } from './vidukiService';
 import { searchTmdbMovies, fetchTmdbTrending } from './tmdbService';
 
 export const FEATURED_MOVIES: MediaItem[] = [
@@ -923,11 +922,7 @@ export async function searchOrFetchMovie(queryOrUrl: string): Promise<MediaItem[
   const trimmed = queryOrUrl.trim();
   if (!trimmed) return FEATURED_MOVIES;
 
-  // Direct Viduki URL check
-  const vidukiItem = parseVidukiUrl(trimmed);
-  if (vidukiItem) {
-    return [vidukiItem];
-  }
+
 
   const isUrl = trimmed.startsWith('http://') || trimmed.startsWith('https://') || /^[a-zA-Z0-9_-]{11}$/.test(trimmed);
 
@@ -959,7 +954,7 @@ export async function searchOrFetchMovie(queryOrUrl: string): Promise<MediaItem[
     ];
   }
 
-  // Live search online movies (includes direct YouTube and Viduki results)
+  // Live search online movies (includes direct YouTube and TMDB results)
   return searchOnlineMovies(trimmed);
 }
 

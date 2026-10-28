@@ -46,8 +46,7 @@ export function isSeriesItem(item: MediaItem | null | undefined): boolean {
   if (!item) return false;
   if (item.mediaType === 'tv' || (item as any).type === 'tv') return true;
   if (item.category === 'series') return true;
-  if (Boolean(item.season)) return true;
-  if (item.id && (item.id.includes('-tv-') || item.id.startsWith('viduki-tv-'))) return true;
+  if (item.id && (item.id.includes('-tv-') || item.id.startsWith('tmdb-tv-') || item.id.startsWith('series-'))) return true;
   if (item.tags && (item.tags.includes('tv_series') || item.tags.includes('series') || item.tags.includes('tv'))) return true;
   if (item.badge && (item.badge.toLowerCase().includes('tv') || item.badge.toLowerCase().includes('series'))) return true;
   if (item.rating && item.rating.toLowerCase().includes('season')) return true;
@@ -538,7 +537,7 @@ export function getSeriesSeasons(item: MediaItem): SeriesSeason[] {
   if (!item) return [];
 
   const tmdbKey = String(item.tmdbId || '').trim();
-  const idKey = String(item.id || '').replace(/^viduki-(?:movie-|tv-|direct-)?/, '').trim();
+  const idKey = String(item.id || '').replace(/^tmdb-(?:movie-|tv-|direct-)?/, '').trim();
 
   // 1. Direct hit in curated catalog
   if (tmdbKey && KNOWN_SERIES_CATALOG[tmdbKey]) {
@@ -589,7 +588,7 @@ export function getSeriesSeasons(item: MediaItem): SeriesSeason[] {
         seasonNumber: s,
         title: `Episode ${e}`,
         duration: '48m',
-        description: `Stream Season ${s}, Episode ${e} of ${cleanSeriesTitle(item.title)} on Viduki.`,
+        description: `Stream Season ${s}, Episode ${e} of ${cleanSeriesTitle(item.title)} in HD on TMDB Cinema.`,
       });
     }
 

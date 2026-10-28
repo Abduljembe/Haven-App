@@ -247,11 +247,11 @@ export interface MediaItem {
   description?: string;
   rating?: string;
   tags?: string[];
-  source?: 'archive' | 'blender' | 'youtube' | 'cdn' | 'custom' | 'viduki' | string;
+  source?: 'archive' | 'blender' | 'youtube' | 'cdn' | 'custom' | 'tmdb' | string;
   badge?: string;
   streamQuality?: string;
   backdropUrl?: string;
-  streamSourceType?: 'direct_stream' | 'trailer' | 'screen_share' | 'custom' | 'viduki_embed';
+  streamSourceType?: 'direct_stream' | 'trailer' | 'screen_share' | 'custom' | 'tmdb_stream';
   cast?: string[];
   availableOn?: string[];
   matchScore?: number;
@@ -267,57 +267,7 @@ export interface MediaItem {
   fallbackAvailable?: boolean;
 }
 
-export interface VidukiConfig {
-  apiKey: string;
-  baseUrl?: string;
-  embedTemplate?: string;
-  enabled: boolean;
-  preferredQuality?: string;
-  defaultServer?: 1 | 2 | 3 | 4;
-  themeColor?: string;
-  autoFallbackOnFailure?: boolean;
-}
 
-export interface VidukiFailedEvent {
-  type: 'viduki:all-servers-failed';
-  source?: string;
-  stage?: 'initial' | 'manual-switch' | 'playback-error' | string;
-  status?: number;
-  message?: string;
-  media?: {
-    type?: 'movie' | 'tv';
-    tmdbid?: string;
-    imdbid?: string;
-    season?: string | number;
-    episode?: string | number;
-  };
-}
-
-export interface VidukiWatchProgress {
-  id: string;
-  type: 'movie' | 'tv';
-  title: string;
-  poster_path?: string;
-  backdrop_path?: string;
-  progress?: {
-    watched: number;
-    duration: number;
-  };
-  last_updated?: number;
-  number_of_episodes?: number;
-  number_of_seasons?: number;
-  last_season_watched?: string | number;
-  last_episode_watched?: string | number;
-  show_progress?: Record<string, {
-    season: number | string;
-    episode: number | string;
-    progress: {
-      watched: number;
-      duration: number;
-    };
-    last_updated: number;
-  }>;
-}
 
 export interface InMovieComment {
   id: string;

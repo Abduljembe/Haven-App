@@ -483,9 +483,9 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
     },
     {
       id: 'watch_together',
-      name: 'Movie Watchparty (Viduki)',
+      name: 'Movie Watch Party (TMDB)',
       category: 'media' as FeatureFilter,
-      desc: 'Synchronized movie player, YouTube & cinema streams',
+      desc: 'Synchronized movie player, TMDB & YouTube cinema streams',
       icon: Tv,
       color: 'bg-purple-500 text-white',
       badge: 'Cinema',
@@ -746,7 +746,7 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
     },
     {
       id: 'chan_watchparty',
-      title: 'Movie Watch Party (Viduki & YouTube)',
+      title: 'Movie Watch Party (TMDB & YouTube)',
       desc: 'Synchronized cinema room, streaming movies & YouTube playlists',
       icon: Tv,
       badge: 'Cinema 🍿',
@@ -909,7 +909,7 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
               <Gamepad2 className="w-5 h-5" />
             </button>
 
-            {/* Tab: Watch Party & Cinema (Viduki Streams) */}
+            {/* Tab: Watch Party & Cinema (TMDB Streams) */}
             <button
               type="button"
               id="rail-tab-watchparty"
@@ -922,7 +922,7 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
                   ? isDark ? 'bg-[#374248] text-purple-400 ring-2 ring-purple-500/40' : 'bg-[#e2e5e9] text-purple-600 ring-2 ring-purple-400/40'
                   : 'hover:bg-black/5 dark:hover:bg-white/5 text-slate-500 dark:text-slate-400'
               }`}
-              title="Movie Watch Party & Cinema (Viduki)"
+              title="Movie Watch Party & Cinema (TMDB)"
             >
               <Tv className="w-5 h-5 text-purple-400 group-hover:scale-110 transition-transform" />
               <span className="absolute -top-1 -right-1 text-[8px] bg-purple-600 text-white font-black px-1 py-0.2 rounded-full shadow-xs">
@@ -2106,7 +2106,7 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
                       icon: Film,
                     },
                     {
-                      title: 'Viduki Cinema Stream',
+                      title: 'TMDB Cinema Stream',
                       desc: 'Stream full movies & trending series with synchronized subtitles',
                       badge: 'Movies',
                       color: 'bg-purple-600 text-white',
@@ -2210,7 +2210,7 @@ export const WhatsAppLayout: React.FC<WhatsAppLayoutProps> = ({
                     <Tv className="w-6 h-6" />
                   </div>
                   <div className="flex-1 min-w-0">
-                    <h4 className="text-sm font-bold">Movie Watchparty (Viduki)</h4>
+                    <h4 className="text-sm font-bold">Movie Watch Party (TMDB)</h4>
                     <p className="text-xs text-slate-400 truncate">
                       Synchronized movies & YouTube stream
                     </p>
