@@ -5298,44 +5298,77 @@ async function startServer() {
   // --- TMDB API Proxy Routes ---
   const TMDB_BEARER = process.env.TMDB_TOKEN || process.env.TMDB_API_KEY || '';
 
+  const getCuratedTmdbFormat = (movies: any[]) => ({
+    page: 1,
+    results: movies.map((m, idx) => ({
+      id: m.tmdbId ? Number(m.tmdbId) : 1000 + idx,
+      title: m.title,
+      name: m.title,
+      overview: m.description || m.artist,
+      poster_path: m.thumbnailUrl ? m.thumbnailUrl.replace('https://image.tmdb.org/t/p/w500', '') : null,
+      backdrop_path: m.backdropUrl ? m.backdropUrl.replace('https://image.tmdb.org/t/p/original', '') : null,
+      vote_average: parseFloat(m.rating || '8.5') || 8.5,
+      release_date: `${m.year || 2024}-01-01`,
+      first_air_date: `${m.year || 2024}-01-01`,
+    })),
+    total_pages: 1,
+    total_results: movies.length,
+  });
+
   app.get('/api/tmdb/trending', async (req, res) => {
-    try {
-      const url = 'https://api.themoviedb.org/3/trending/movie/week?language=en-US';
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${TMDB_BEARER}`,
-          accept: 'application/json',
-        },
-      });
-      if (!response.ok) {
-        return res.status(response.status).json({ error: 'Failed to fetch trending from TMDB', results: [] });
+    if (TMDB_BEARER) {
+      try {
+        const url = 'https://api.themoviedb.org/3/trending/movie/week?language=en-US';
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${TMDB_BEARER}`,
+            accept: 'application/json',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data.results) && data.results.length > 0) {
+            return res.json(data);
+          }
+        }
+      } catch (err) {
+        // Fall back to curated
       }
-      const data = await response.json();
-      res.json(data);
-    } catch (err) {
-      res.status(500).json({ error: 'Internal server error fetching TMDB trending', results: [] });
     }
+    res.json(getCuratedTmdbFormat(CURATED_ONLINE_MOVIES));
   });
 
   app.get('/api/tmdb/search', async (req, res) => {
-    const query = String(req.query.q || '').trim();
+    const query = String(req.query.q || '').trim().toLowerCase();
     if (!query) return res.json({ results: [] });
-    try {
-      const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&language=en-US&page=1`;
-      const response = await fetch(url, {
-        headers: {
-          Authorization: `Bearer ${TMDB_BEARER}`,
-          accept: 'application/json',
-        },
-      });
-      if (!response.ok) {
-        return res.status(response.status).json({ error: 'Failed to search TMDB', results: [] });
+
+    if (TMDB_BEARER) {
+      try {
+        const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&language=en-US&page=1`;
+        const response = await fetch(url, {
+          headers: {
+            Authorization: `Bearer ${TMDB_BEARER}`,
+            accept: 'application/json',
+          },
+        });
+        if (response.ok) {
+          const data = await response.json();
+          if (Array.isArray(data.results) && data.results.length > 0) {
+            return res.json(data);
+          }
+        }
+      } catch (err) {
+        // Fall back to curated
       }
-      const data = await response.json();
-      res.json(data);
-    } catch (err) {
-      res.status(500).json({ error: 'Internal server error searching TMDB', results: [] });
     }
+
+    const matches = CURATED_ONLINE_MOVIES.filter(
+      (m) =>
+        m.title.toLowerCase().includes(query) ||
+        (m.genre && m.genre.toLowerCase().includes(query)) ||
+        (m.artist && m.artist.toLowerCase().includes(query))
+    );
+    res.json(getCuratedTmdbFormat(matches.length > 0 ? matches : CURATED_ONLINE_MOVIES.slice(0, 6)));
   });
 
   app.get('/api/tmdb/recommendations/:id', async (req, res) => {

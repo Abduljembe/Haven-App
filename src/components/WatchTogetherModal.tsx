@@ -165,6 +165,12 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
 
   // TMDB & Series State
   const [showTmdbInfoModal, setShowTmdbInfoModal] = useState(false);
+  const [userTmdbKey, setUserTmdbKey] = useState<string>(() => {
+    if (typeof window !== 'undefined') {
+      return localStorage.getItem('haven_tmdb_api_key') || '';
+    }
+    return '';
+  });
   const [seriesModalItem, setSeriesModalItem] = useState<MediaItem | null>(null);
   const [isCopiedLink, setIsCopiedLink] = useState(false);
   const isInIframe = typeof window !== 'undefined' && window.self !== window.top;
@@ -971,8 +977,17 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
   // Video embed listener: window.addEventListener("message", ...)
   useEffect(() => {
     const handleEmbedMessage = (event: MessageEvent) => {
-      const data = event.data;
+      let data = event.data;
+      if (typeof data === 'string') {
+        try {
+          data = JSON.parse(data);
+        } catch {
+          return;
+        }
+      }
       if (!data || typeof data !== 'object') return;
+
+      // Handle video finished -> autoplay next
       if (
         data.type === 'ended' ||
         data.event === 'ended' ||
@@ -981,13 +996,26 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       ) {
         handleVideoFinished();
       }
+
+      // Handle video unavailable / playback restrictions on host domain (e.g. YouTube error 150/101)
+      if (
+        data.event === 'onError' ||
+        data.info === 101 ||
+        data.info === 150 ||
+        data.info === 100 ||
+        data.info === 5 ||
+        data.error === 'embedding_not_allowed'
+      ) {
+        console.warn('Video embed restricted or unavailable on current domain, switching to guaranteed HD stream...');
+        switchToFallbackStream();
+      }
     };
 
     window.addEventListener('message', handleEmbedMessage);
     return () => {
       window.removeEventListener('message', handleEmbedMessage);
     };
-  }, [handleVideoFinished]);
+  }, [handleVideoFinished, switchToFallbackStream]);
 
   // Universal Search Handler (TMDB & YouTube Cinema)
   const handlePerformSearch = async (query: string) => {
@@ -3507,6 +3535,52 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                         <span>{title}</span>
                       </button>
                     ))}
+                  </div>
+                </div>
+
+                <div className="p-3.5 bg-slate-950/80 rounded-xl border border-slate-800 space-y-2">
+                  <div className="flex items-center justify-between">
+                    <h4 className="font-bold text-white text-[11px] flex items-center gap-1.5">
+                      <Key className="w-3.5 h-3.5 text-rose-400" />
+                      <span>Custom TMDB API Key (Optional)</span>
+                    </h4>
+                    {userTmdbKey && (
+                      <span className="text-[10px] text-emerald-400 font-medium flex items-center gap-1">
+                        <Check className="w-3 h-3" /> Key Active
+                      </span>
+                    )}
+                  </div>
+                  <p className="text-[10px] text-slate-400 leading-relaxed">
+                    Built-in blockbusters work automatically without a key. To query millions of additional titles live on Vercel, paste your free TMDB API Read Token or API Key below:
+                  </p>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="password"
+                      value={userTmdbKey}
+                      onChange={(e) => {
+                        const val = e.target.value.trim();
+                        setUserTmdbKey(val);
+                        if (val) {
+                          localStorage.setItem('haven_tmdb_api_key', val);
+                        } else {
+                          localStorage.removeItem('haven_tmdb_api_key');
+                        }
+                      }}
+                      placeholder="Paste TMDB API Key or Read Token..."
+                      className="flex-1 px-3 py-1.5 bg-slate-900 border border-slate-700 rounded-xl text-white text-xs font-mono placeholder:text-slate-600 focus:outline-hidden focus:border-rose-500"
+                    />
+                    {userTmdbKey && (
+                      <button
+                        type="button"
+                        onClick={() => {
+                          setUserTmdbKey('');
+                          localStorage.removeItem('haven_tmdb_api_key');
+                        }}
+                        className="px-2.5 py-1.5 rounded-xl bg-slate-800 hover:bg-slate-700 text-slate-300 hover:text-white text-[11px] font-semibold cursor-pointer transition"
+                      >
+                        Clear
+                      </button>
+                    )}
                   </div>
                 </div>
               </div>
