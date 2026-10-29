@@ -5338,13 +5338,193 @@ async function startServer() {
     res.json(getCuratedTmdbFormat(CURATED_ONLINE_MOVIES));
   });
 
-  app.get('/api/tmdb/search', async (req, res) => {
-    const query = String(req.query.q || '').trim().toLowerCase();
-    if (!query) return res.json({ results: [] });
+  const SERVER_POPULAR_MOVIES = [
+    {
+      title: 'Inception',
+      artist: 'Christopher Nolan • Leonardo DiCaprio',
+      year: 2010,
+      genre: 'Sci-Fi • Mind-Bending Thriller',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg',
+      rating: '8.8/10',
+      description: 'A thief who steals corporate secrets through dream-sharing technology.',
+      tmdbId: '27205',
+    },
+    {
+      title: 'Interstellar',
+      artist: 'Christopher Nolan • Matthew McConaughey',
+      year: 2014,
+      genre: 'Sci-Fi • Cosmic Space Adventure',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/xJHokMbljvjADYdit5fK5VQsXEG.jpg',
+      rating: '8.9/10',
+      description: 'A team of explorers travel through a wormhole in space in an attempt to ensure humanity survival.',
+      tmdbId: '157336',
+    },
+    {
+      title: 'Titanic',
+      artist: 'James Cameron • Leonardo DiCaprio, Kate Winslet',
+      year: 1997,
+      genre: 'Romance • Drama • Epic Disaster',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/6VmF2397ISx6AZzlwhtGR59x7Yn.jpg',
+      rating: '9.1/10',
+      description: 'A seventeen-year-old aristocrat falls in love with a kind but poor artist aboard the luxurious, ill-fated R.M.S. Titanic.',
+      tmdbId: '597',
+    },
+    {
+      title: 'Dune: Part Two',
+      artist: 'Denis Villeneuve • Timothée Chalamet, Zendaya',
+      year: 2024,
+      genre: 'Sci-Fi • Epic Desert Adventure',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0x2.jpg',
+      rating: '8.7/10',
+      description: 'Paul Atreides unites with Chani and the Fremen while seeking revenge.',
+      tmdbId: '693134',
+    },
+    {
+      title: 'Spider-Man: Across the Spider-Verse',
+      artist: 'Joaquim Dos Santos, Kemp Powers',
+      year: 2023,
+      genre: 'Animation • Multiverse Action',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg',
+      rating: '8.8/10',
+      description: 'Miles Morales catapults across the Multiverse.',
+      tmdbId: '569094',
+    },
+    {
+      title: 'Oppenheimer',
+      artist: 'Christopher Nolan • Cillian Murphy',
+      year: 2023,
+      genre: 'Biography • Drama • History',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/nb3xI8XI3xyYBYIRZEda8vdAj8f.jpg',
+      rating: '8.9/10',
+      description: 'The story of American scientist J. Robert Oppenheimer and his role in the Manhattan Project.',
+      tmdbId: '872585',
+    },
+    {
+      title: 'The Dark Knight',
+      artist: 'Christopher Nolan • Christian Bale, Heath Ledger',
+      year: 2008,
+      genre: 'Action • Crime • Masterpiece',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/nMKdUUepR0i5zn0y1T4CsSB5chy.jpg',
+      rating: '9.0/10',
+      description: 'Batman must accept one of the greatest psychological tests of his ability to fight injustice.',
+      tmdbId: '155',
+    },
+    {
+      title: 'The Batman',
+      artist: 'Matt Reeves • Robert Pattinson',
+      year: 2022,
+      genre: 'Action • Crime • Detective Noir',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg',
+      rating: '8.3/10',
+      description: 'In his second year of fighting crime, Batman uncovers corruption in Gotham City.',
+      tmdbId: '414906',
+    },
+    {
+      title: 'Deadpool & Wolverine',
+      artist: 'Shawn Levy • Ryan Reynolds, Hugh Jackman',
+      year: 2024,
+      genre: 'Action • Comedy • Marvel Multiverse',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg',
+      rating: '8.2/10',
+      description: 'Wade Wilson teams up with Wolverine on a mission for the TVA.',
+      tmdbId: '533535',
+    },
+    {
+      title: 'Avatar',
+      artist: 'James Cameron • Sam Worthington, Zoe Saldaña',
+      year: 2009,
+      genre: 'Action • Sci-Fi • Adventure',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/kyeqWdyUXW608qlYkRqosgbbJyK.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/o075VitstnauVK69qiY1Icg4Cqo.jpg',
+      rating: '8.3/10',
+      description: 'A paraplegic Marine is dispatched to the moon Pandora.',
+      tmdbId: '19995',
+    },
+    {
+      title: 'The Matrix',
+      artist: 'Lana & Lilly Wachowski • Keanu Reeves',
+      year: 1999,
+      genre: 'Sci-Fi • Action • Cyberpunk',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/7u3fhRw1ql7080w1RjC6oN2hV8v.jpg',
+      rating: '8.7/10',
+      description: 'A computer hacker learns from mysterious rebels about the true nature of his reality.',
+      tmdbId: '603',
+    },
+    {
+      title: 'Barbie',
+      artist: 'Greta Gerwig • Margot Robbie, Ryan Gosling',
+      year: 2023,
+      genre: 'Comedy • Adventure • Pop Culture',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/ctMserH8g2SeOAnCw5gFjd2NTLq.jpg',
+      rating: '8.1/10',
+      description: 'Barbie and Ken are having the time of their lives in the colorful Barbie Land.',
+      tmdbId: '346698',
+    },
+    {
+      title: 'The Godfather',
+      artist: 'Francis Ford Coppola • Marlon Brando, Al Pacino',
+      year: 1972,
+      genre: 'Crime • Drama • Masterpiece',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/tmU7GeKVybMWF9YOCagmsSz96g7.jpg',
+      rating: '9.4/10',
+      description: 'The aging patriarch of an organized crime dynasty transfers control to his reluctant son.',
+      tmdbId: '238',
+    },
+    {
+      title: 'Stranger Things',
+      artist: 'The Duffer Brothers • Millie Bobby Brown',
+      year: 2016,
+      genre: 'TV Series • Sci-Fi & 80s Nostalgia',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/56v2KjBlU4XaOv9rVYEQypROD7P.jpg',
+      rating: '8.6/10',
+      description: 'When a young boy vanishes, a small town uncovers a supernatural mystery.',
+      tmdbId: '66732',
+    },
+    {
+      title: 'Breaking Bad',
+      artist: 'Vince Gilligan • Bryan Cranston, Aaron Paul',
+      year: 2008,
+      genre: 'TV Series • Crime Drama & Suspense',
+      thumbnailUrl: 'https://image.tmdb.org/t/p/w500/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg',
+      backdropUrl: 'https://image.tmdb.org/t/p/original/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg',
+      rating: '9.5/10',
+      description: 'A chemistry teacher diagnosed with lung cancer turns to manufacturing methamphetamine.',
+      tmdbId: '1396',
+    },
+  ];
 
+  app.get('/api/tmdb/search', async (req, res) => {
+    const rawQuery = String(req.query.q || '').trim();
+    if (!rawQuery) return res.json({ results: [] });
+    const query = rawQuery.toLowerCase();
+
+    // 1. Check SERVER_POPULAR_MOVIES & CURATED_ONLINE_MOVIES for instant matches
+    const allLocal = [...SERVER_POPULAR_MOVIES, ...CURATED_ONLINE_MOVIES];
+    const localMatches = allLocal.filter(
+      (m: any) =>
+        m.title.toLowerCase().includes(query) ||
+        (m.genre && m.genre.toLowerCase().includes(query)) ||
+        (m.artist && m.artist.toLowerCase().includes(query)) ||
+        (m.description && m.description.toLowerCase().includes(query))
+    );
+
+    // 2. Try official TMDB search if bearer token is configured
     if (TMDB_BEARER) {
       try {
-        const url = `https://api.themoviedb.org/3/search/movie?query=${encodeURIComponent(query)}&language=en-US&page=1`;
+        const url = `https://api.themoviedb.org/3/search/multi?query=${encodeURIComponent(rawQuery)}&language=en-US&page=1`;
         const response = await fetch(url, {
           headers: {
             Authorization: `Bearer ${TMDB_BEARER}`,
@@ -5358,17 +5538,97 @@ async function startServer() {
           }
         }
       } catch (err) {
-        // Fall back to curated
+        // Fall through to public search fallback
       }
     }
 
-    const matches = CURATED_ONLINE_MOVIES.filter(
-      (m) =>
-        m.title.toLowerCase().includes(query) ||
-        (m.genre && m.genre.toLowerCase().includes(query)) ||
-        (m.artist && m.artist.toLowerCase().includes(query))
-    );
-    res.json(getCuratedTmdbFormat(matches.length > 0 ? matches : CURATED_ONLINE_MOVIES.slice(0, 6)));
+    // 3. Query public iTunes Search API (covers movies, animated features & TV)
+    let itunesFormatted: any[] = [];
+    try {
+      const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(rawQuery)}&limit=25`;
+      const itunesRes = await fetch(itunesUrl, { signal: AbortSignal.timeout(4000) });
+      if (itunesRes.ok) {
+        const itunesData = await itunesRes.json();
+        if (Array.isArray(itunesData.results) && itunesData.results.length > 0) {
+          itunesFormatted = itunesData.results
+            .filter((item: any) => item.trackName || item.collectionName)
+            .map((item: any) => ({
+              id: item.trackId || item.collectionId,
+              title: item.trackName || item.collectionName,
+              name: item.trackName || item.collectionName,
+              overview: item.longDescription || item.shortDescription || `${item.trackName || item.collectionName} (${item.primaryGenreName || 'Cinema'}).`,
+              poster_path: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '600x600bb') : null,
+              backdrop_path: item.artworkUrl100 ? item.artworkUrl100.replace('100x100bb', '1000x1000bb') : null,
+              vote_average: item.contentAdvisoryRating ? 8.6 : 8.2,
+              release_date: item.releaseDate ? item.releaseDate.split('T')[0] : '2024-01-01',
+              first_air_date: item.releaseDate ? item.releaseDate.split('T')[0] : '2024-01-01',
+              preview_url: item.previewUrl,
+              artist: item.artistName,
+              genre: item.primaryGenreName,
+            }));
+        }
+      }
+    } catch (itunesErr) {
+      console.warn('Server iTunes search fallback error:', itunesErr);
+    }
+
+    // 4. Query public TVMaze Search API for TV series & anime
+    let tvmazeFormatted: any[] = [];
+    try {
+      const tvRes = await fetch(`https://api.tvmaze.com/search/shows?q=${encodeURIComponent(rawQuery)}`, { signal: AbortSignal.timeout(4000) });
+      if (tvRes.ok) {
+        const tvData = await tvRes.json();
+        if (Array.isArray(tvData) && tvData.length > 0) {
+          tvmazeFormatted = tvData.map((d: any) => ({
+            id: d.show.id,
+            title: d.show.name,
+            name: d.show.name,
+            overview: d.show.summary ? d.show.summary.replace(/<[^>]*>?/gm, '') : `${d.show.name} series on TMDB.`,
+            poster_path: d.show.image?.original || d.show.image?.medium || null,
+            backdrop_path: d.show.image?.original || null,
+            vote_average: d.show.rating?.average || 8.4,
+            release_date: d.show.premiered || '2024-01-01',
+            first_air_date: d.show.premiered || '2024-01-01',
+            artist: d.show.genres ? d.show.genres.join(', ') : 'TV Series',
+            genre: 'TV Series',
+          }));
+        }
+      }
+    } catch {}
+
+    // Combine all results and deduplicate by title
+    const seen = new Set<string>();
+    const combinedResults: any[] = [];
+
+    // Local catalog matches first (highest quality metadata & trailers)
+    const localFormatted = localMatches.map((m) => ({
+      id: m.tmdbId ? Number(m.tmdbId) : 5000,
+      title: m.title,
+      name: m.title,
+      overview: m.description,
+      poster_path: m.thumbnailUrl,
+      backdrop_path: m.backdropUrl,
+      vote_average: parseFloat(m.rating || '8.8') || 8.8,
+      release_date: `${m.year || 2024}-01-01`,
+      first_air_date: `${m.year || 2024}-01-01`,
+      artist: m.artist,
+      genre: m.genre,
+    }));
+
+    for (const item of [...localFormatted, ...itunesFormatted, ...tvmazeFormatted]) {
+      const key = (item.title || item.name || '').toLowerCase().trim();
+      if (key && !seen.has(key)) {
+        seen.add(key);
+        combinedResults.push(item);
+      }
+    }
+
+    res.json({
+      page: 1,
+      results: combinedResults,
+      total_pages: 1,
+      total_results: combinedResults.length,
+    });
   });
 
   app.get('/api/tmdb/recommendations/:id', async (req, res) => {

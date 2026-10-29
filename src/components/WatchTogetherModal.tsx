@@ -229,6 +229,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     isPlayingRef.current = isPlaying;
   }, [isPlaying]);
   const countdownTimerRef = useRef<ReturnType<typeof setInterval> | null>(null);
+  const searchDebounceRef = useRef<NodeJS.Timeout | null>(null);
 
   // Haven Cinema Ad Shield & Stop/Resume Protection States
   const [adShieldActive, setAdShieldActive] = useState<boolean>(false);
@@ -1017,8 +1018,12 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     };
   }, [handleVideoFinished, switchToFallbackStream]);
 
-  // Universal Search Handler (TMDB & YouTube Cinema)
+  // Universal Search Handler (TMDB Cinema, Public Movies & YouTube)
   const handlePerformSearch = async (query: string) => {
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+      searchDebounceRef.current = null;
+    }
     const trimmed = query.trim();
     if (!trimmed) {
       if (selectedCategory === 'classics') {
@@ -1028,7 +1033,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         setSearchResults(ytDefaults);
       } else {
         const trending = await fetchTmdbTrending();
-        setSearchResults(trending.length > 0 ? trending : FEATURED_MOVIES);
+        setSearchResults(trending);
       }
       return;
     }
@@ -1050,19 +1055,30 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         const ytResults = await searchYouTubeDirect(trimmed);
         setSearchResults(ytResults);
       } else {
+        // Multi-Source Search (Server Proxy -> TMDB Direct -> Public iTunes & TVMaze -> 100+ Catalog)
         const tmdbResults = await searchTmdbMovies(trimmed);
-        if (tmdbResults.length > 0) {
-          setSearchResults(tmdbResults);
-        } else {
-          const ytResults = await searchYouTubeDirect(`${trimmed} full movie hd`);
-          setSearchResults(ytResults.length > 0 ? ytResults : FEATURED_MOVIES);
-        }
+        setSearchResults(tmdbResults);
       }
     } catch (err) {
       console.warn('Movie search error:', err);
     } finally {
       setIsSearching(false);
     }
+  };
+
+  // Debounced input change handler so typing feels fluid and doesn't fire redundant API calls
+  const handleSearchInputChange = (val: string) => {
+    setSearchQuery(val);
+    if (searchDebounceRef.current) {
+      clearTimeout(searchDebounceRef.current);
+    }
+    if (!val.trim()) {
+      handlePerformSearch('');
+      return;
+    }
+    searchDebounceRef.current = setTimeout(() => {
+      handlePerformSearch(val);
+    }, 250);
   };
 
   // Filter catalog by source: TMDB, Instant Classics, YouTube, or Watchlist
@@ -1093,13 +1109,13 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       try {
         if (searchQuery.trim()) {
           const results = await searchTmdbMovies(searchQuery.trim());
-          setSearchResults(results.length > 0 ? results : FEATURED_MOVIES);
+          setSearchResults(results);
         } else {
           const trending = await fetchTmdbTrending();
-          setSearchResults(trending.length > 0 ? trending : FEATURED_MOVIES);
+          setSearchResults(trending);
         }
       } catch (err) {
-        setSearchResults(FEATURED_MOVIES);
+        setSearchResults([]);
       } finally {
         setIsSearching(false);
       }
@@ -1639,11 +1655,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSearchQuery(val);
-                  handlePerformSearch(val);
-                }}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
                 placeholder="Search fast classics (e.g. His Girl Friday, Charade, My Man Godfrey, Cary Grant, Romance, Comedy)..."
                 className="w-full pl-9 pr-8 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-indigo-500"
               />
@@ -1694,12 +1706,8 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSearchQuery(val);
-                  handlePerformSearch(val);
-                }}
-                placeholder="Search TMDB movies, series, shows (e.g. Deadpool, Titanic, Inception, Interstellar)..."
+                onChange={(e) => handleSearchInputChange(e.target.value)}
+                placeholder="Search any movie or series (e.g. Titanic, Avatar, Spider-Man, Deadpool, Batman, Inception, Anime)..."
                 className="w-full pl-9 pr-8 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-rose-500"
               />
               {searchQuery && (
@@ -1806,11 +1814,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               <input
                 type="text"
                 value={searchQuery}
-                onChange={(e) => {
-                  const val = e.target.value;
-                  setSearchQuery(val);
-                  handlePerformSearch(val);
-                }}
+                onChange={(e) => handleSearchInputChange(e.target.value)}
                 placeholder="Search YouTube (e.g. Music, Podcasts, Trailers, Gaming, Documentaries, Lofi)..."
                 className="w-full pl-9 pr-8 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500"
               />
