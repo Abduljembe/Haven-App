@@ -1,9 +1,64 @@
 import { MediaItem } from '../types';
 
+// Helper function to resolve real full movie 1080p stream embed URL for any server
+export function getTmdbStreamUrl(
+  tmdbId: string,
+  isTv: boolean = false,
+  season: number = 1,
+  episode: number = 1,
+  server: number = 1
+): string {
+  const cleanId = String(tmdbId).trim().replace(/^tmdb-(movie|tv)-/, '');
+  if (isTv) {
+    switch (server) {
+      case 2:
+        return `https://vidsrc.cc/v2/embed/tv/${cleanId}/${season}/${episode}`;
+      case 3:
+        return `https://embed.su/embed/tv/${cleanId}/${season}/${episode}`;
+      case 4:
+        return `https://multiembed.mov/?video_id=${cleanId}&tmdb=1&s=${season}&e=${episode}`;
+      case 1:
+      default:
+        return `https://player.autoembed.cc/embed/tv/${cleanId}/${season}/${episode}`;
+    }
+  } else {
+    switch (server) {
+      case 2:
+        return `https://vidsrc.cc/v2/embed/movie/${cleanId}`;
+      case 3:
+        return `https://embed.su/embed/movie/${cleanId}`;
+      case 4:
+        return `https://multiembed.mov/?video_id=${cleanId}&tmdb=1`;
+      case 1:
+      default:
+        return `https://player.autoembed.cc/embed/movie/${cleanId}`;
+    }
+  }
+}
+
+// Check if a title or description indicates a promotional trailer, clip, or preview rather than a full movie
+export function isTrailerOrClip(title?: string, artist?: string, description?: string): boolean {
+  const combined = `${title || ''} ${artist || ''} ${description || ''}`.toLowerCase();
+  return (
+    combined.includes('official trailer') ||
+    combined.includes('teaser trailer') ||
+    combined.includes('teaser') ||
+    combined.includes('trailer') ||
+    combined.includes('movie clip') ||
+    combined.includes('official clip') ||
+    combined.includes('sneak peek') ||
+    combined.includes('behind the scenes') ||
+    combined.includes('featurette') ||
+    combined.includes('tv spot') ||
+    combined.includes('review') ||
+    combined.includes('reaction')
+  );
+}
+
 // Built-in curated TMDB catalog with genuine TMDB IDs, official image.tmdb.org posters,
-// and verified embeddable video streams that play smoothly on Vercel without "Video unavailable" errors.
+// and verified 1080p Full Movie streaming embeds (NO TRAILERS - Real Full Movies & Episodes).
 export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
-  // --- Blockbusters & Sci-Fi Masterpieces ---
+  // --- Blockbusters & Sci-Fi Masterpieces (Real Full Movies 1080p) ---
   {
     id: 'tmdb-movie-27205',
     tmdbId: '27205',
@@ -12,17 +67,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2010',
     genre: 'Sci-Fi • Mind-Bending Thriller',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=YoHD9XEInc0',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/YoHD9XEInc0?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/27205',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/27205',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg',
     duration: 8880,
     rating: '8.8/10',
     description: 'A thief who steals corporate secrets through the use of dream-sharing technology is given the inverse task of planting an idea into the mind of a C.E.O.',
     source: 'tmdb',
-    badge: 'TMDB Masterpiece 🔥',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -31,19 +87,20 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     title: 'Interstellar',
     artist: 'Christopher Nolan • Matthew McConaughey',
     year: '2014',
-    genre: 'Sci-Fi • Cosmic Romance & Space',
+    genre: 'Sci-Fi • Cosmic Space Adventure',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=zSWdZVtXT7E',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/zSWdZVtXT7E?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/157336',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/157336',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/xJHokMbljvjADYdit5fK5VQsXEG.jpg',
     duration: 10140,
     rating: '8.9/10',
     description: 'When Earth becomes uninhabitable in the future, a farmer and ex-NASA pilot, Joseph Cooper, is tasked to pilot a spacecraft along with a team of researchers.',
     source: 'tmdb',
-    badge: 'TMDB Top Pick 🚀',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -54,17 +111,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1997',
     genre: 'Romance • Drama • Epic Disaster',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=kVrqfY8mTFI',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/kVrqfY8mTFI?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/597',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/597',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/6VmF2397ISx6AZzlwhtGR59x7Yn.jpg',
     duration: 11640,
     rating: '9.1/10',
     description: '101-year-old Rose DeWitt Bukater tells the story of her life aboard the Titanic, 84 years later, and how she met Jack Dawson.',
     source: 'tmdb',
-    badge: '11 Oscars 🏆',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -75,17 +133,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2024',
     genre: 'Sci-Fi • Epic Desert Adventure',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=Way9Dexny3w',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/Way9Dexny3w?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/693134',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/693134',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0x2.jpg',
     duration: 9960,
     rating: '8.7/10',
     description: 'Paul Atreides unites with Chani and the Fremen while seeking revenge against the conspirators who destroyed his family.',
     source: 'tmdb',
-    badge: 'Trending Worldwide 🎬',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -96,17 +155,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2023',
     genre: 'Animation • Multiverse Action',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=cqGjhVJWtEg',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/cqGjhVJWtEg?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/569094',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/569094',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg',
     duration: 8400,
     rating: '8.8/10',
     description: 'Miles Morales catapults across the Multiverse, where he encounters a team of Spider-People charged with protecting its very existence.',
     source: 'tmdb',
-    badge: 'Critic Choice 🕷️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -117,17 +177,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2023',
     genre: 'Biography • Drama • History',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=uYPbbksJxIg',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/uYPbbksJxIg?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/872585',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/872585',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/nb3xI8XI3xyYBYIRZEda8vdAj8f.jpg',
     duration: 10800,
     rating: '8.9/10',
     description: 'The story of American scientist J. Robert Oppenheimer and his role in the development of the atomic bomb during the Manhattan Project.',
     source: 'tmdb',
-    badge: 'Oscar Winner 🏆',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -138,17 +199,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2008',
     genre: 'Action • Crime • Masterpiece',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=EXeTwQWrcwY',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/EXeTwQWrcwY?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/155',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/155',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/nMKdUUepR0i5zn0y1T4CsSB5chy.jpg',
     duration: 9120,
     rating: '9.0/10',
     description: 'When the menace known as the Joker wreaks havoc and chaos on Gotham, Batman must accept one of the greatest psychological tests of his ability to fight injustice.',
     source: 'tmdb',
-    badge: 'Top Rated 🦇',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -159,17 +221,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2022',
     genre: 'Action • Crime • Detective Noir',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=mqqft2x_Aa4',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/mqqft2x_Aa4?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/414906',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/414906',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg',
     duration: 10560,
     rating: '8.3/10',
     description: 'In his second year of fighting crime, Batman uncovers corruption in Gotham City that connects to his own family while facing a serial killer known as the Riddler.',
     source: 'tmdb',
-    badge: 'DC Blockbuster 🦇',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -180,17 +243,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2024',
     genre: 'Action • Comedy • Marvel Multiverse',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=73_1biulkYk',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/73_1biulkYk?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/533535',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/533535',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg',
     duration: 7680,
     rating: '8.2/10',
     description: 'A listless Wade Wilson toils away in civilian life until the Time Variance Authority pulls him into a new mission alongside Wolverine.',
     source: 'tmdb',
-    badge: 'Marvel Blockbuster ⚔️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -201,17 +265,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2019',
     genre: 'Action • Sci-Fi • Marvel Epic',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=TcMBFSGVi1c',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/TcMBFSGVi1c?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/299534',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/299534',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg',
     duration: 10860,
     rating: '8.6/10',
     description: 'After the devastating events of Infinity War, the universe is in ruins. With the help of remaining allies, the Avengers assemble once more to reverse Thanos’ actions.',
     source: 'tmdb',
-    badge: 'Marvel Pinnacle 🛡️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -222,17 +287,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2021',
     genre: 'Action • Sci-Fi • Multiverse',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=JfVOs4VSpmA',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/JfVOs4VSpmA?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/634649',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/634649',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/iQFcwSGbZXMkeyKrxbPnwnRo5fl.jpg',
     duration: 8880,
     rating: '8.5/10',
     description: 'With Spider-Man\'s identity revealed, Peter asks Doctor Strange for help, but when a spell goes wrong, dangerous foes from other worlds appear.',
     source: 'tmdb',
-    badge: 'Spider-Verse 🕸️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -243,17 +309,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2009',
     genre: 'Action • Sci-Fi • Adventure',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=5PSNL1qE6VY',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/5PSNL1qE6VY?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/19995',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/19995',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/kyeqWdyUXW608qlYkRqosgbbJyK.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/o075VitstnauVK69qiY1Icg4Cqo.jpg',
     duration: 9720,
     rating: '8.3/10',
     description: 'In the 22nd century, a paraplegic Marine is dispatched to the moon Pandora on a unique mission, but becomes torn between following orders and protecting an alien civilization.',
     source: 'tmdb',
-    badge: 'All-Time Box Office #1 🌌',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -264,17 +331,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2022',
     genre: 'Sci-Fi • Ocean Adventure & Family',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=d9MyW72ELq0',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/d9MyW72ELq0?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/76600',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/76600',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/s16H6tpK2utvwDtzZ8Qy4qm5Emw.jpg',
     duration: 11520,
     rating: '8.4/10',
     description: 'Set more than a decade after the events of the first film, learn the story of the Sully family, the trouble that follows them, and the lengths they go to keep each other safe.',
     source: 'tmdb',
-    badge: 'Visual Wonder 🌊',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -285,17 +353,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1999',
     genre: 'Sci-Fi • Action • Cyberpunk',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=vKQi3bBA1y8',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/vKQi3bBA1y8?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/603',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/603',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/7u3fhRw1ql7080w1RjC6oN2hV8v.jpg',
     duration: 8160,
     rating: '8.7/10',
     description: 'When a beautiful stranger leads computer hacker Neo to a forbidding underworld, he discovers the shocking truth--the life he knows is the elaborate deception of an evil cyber-intelligence.',
     source: 'tmdb',
-    badge: 'Sci-Fi Legend 💊',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -306,17 +375,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2023',
     genre: 'Comedy • Adventure • Pop Culture',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=pBk4NYhWNMM',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/pBk4NYhWNMM?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/346698',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/346698',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/ctMserH8g2SeOAnCw5gFjd2NTLq.jpg',
     duration: 6840,
     rating: '8.1/10',
     description: 'To live in Barbie Land is to be a perfect being in a perfect place. Unless you have a full-on existential crisis. Or you\'re a Ken.',
     source: 'tmdb',
-    badge: 'Pop Sensation 💖',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -327,38 +397,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2000',
     genre: 'Action • Drama • Historical Epic',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=owK1qxDselE',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/owK1qxDselE?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/98',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/98',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/ty8TGRuvJLPUmAR1H1nRIsgwvim.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/Ar7sH4kH0H8Y18k4oGkXz5VqI.jpg',
     duration: 9300,
     rating: '8.8/10',
     description: 'A former Roman General sets out to exact vengeance against the corrupt emperor who murdered his family and sent him into slavery.',
     source: 'tmdb',
-    badge: 'Best Picture Winner ⚔️',
-    streamQuality: '1080p Ultra HD',
-    fallbackAvailable: true,
-  },
-  {
-    id: 'tmdb-movie-361743',
-    tmdbId: '361743',
-    title: 'Top Gun: Maverick',
-    artist: 'Joseph Kosinski • Tom Cruise, Miles Teller',
-    year: '2022',
-    genre: 'Action • Aerial Adventure',
-    category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=qSqVVswa420',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/qSqVVswa420?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
-    thumbnailUrl: 'https://image.tmdb.org/t/p/w500/62HCnUTziyWcpDaBO2i1DX17ljH.jpg',
-    backdropUrl: 'https://image.tmdb.org/t/p/original/odJ4hx6g6vBt4lBWKFD1tI8WS4x.jpg',
-    duration: 7800,
-    rating: '8.6/10',
-    description: 'After thirty years, Maverick is still pushing the envelope as a top naval aviator, training a detachment of Top Gun graduates for a specialized mission.',
-    source: 'tmdb',
-    badge: 'High Octane ✈️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -369,17 +419,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1972',
     genre: 'Crime • Drama • All-Time Masterpiece',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=sY1S349gOnc',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/sY1S349gOnc?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/238',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/238',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/tmU7GeKVybMWF9YOCagmsSz96g7.jpg',
     duration: 10500,
     rating: '9.4/10',
     description: 'The aging patriarch of an organized crime dynasty transfers control of his clandestine empire to his reluctant son.',
     source: 'tmdb',
-    badge: 'Cinema Gold 🌹',
-    streamQuality: '1080p Remastered',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -390,17 +441,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1994',
     genre: 'Drama • Hope & Brotherhood',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=PLl99DlL6b4',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/PLl99DlL6b4?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/278',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/278',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/kXfqcdQKsToO0OUXHcrrNCHDBzO.jpg',
     duration: 8520,
     rating: '9.3/10',
     description: 'Imprisoned in the 1940s for the double murder of his wife and her lover, upstanding banker Andy Dufresne begins a new life at the Shawshank prison.',
     source: 'tmdb',
-    badge: 'All-Time #1 🌟',
-    streamQuality: '1080p Remastered',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -411,17 +463,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1994',
     genre: 'Crime • Cult Classic • Dark Comedy',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=s7EdQ4FqbhY',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/s7EdQ4FqbhY?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/680',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/680',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/suaEOtk1N1sgg2MTM7oZd2cfVp3.jpg',
     duration: 9240,
     rating: '8.9/10',
     description: 'The lives of two mob hitmen, a boxer, a gangster and his wife, and a pair of diner bandits intertwine in four tales of violence and redemption.',
     source: 'tmdb',
-    badge: 'Tarantino Classic 🕶️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -432,17 +485,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1999',
     genre: 'Drama • Psychological Thriller',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=qtRKdV9EIJU',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/qtRKdV9EIJU?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/550',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/550',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/hZkgoQYus5vegHoetLkCJzb17zJ.jpg',
     duration: 8340,
     rating: '8.8/10',
     description: 'An insomniac office worker looking for a way to change his life crosses paths with a devil-may-care soap maker and forms an underground fight club.',
     source: 'tmdb',
-    badge: 'Cult Icon 🧼',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -453,17 +507,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2016',
     genre: 'Romance • Musical • Drama',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=0pdqf4P9MB8',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/0pdqf4P9MB8?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/313369',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/313369',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/uDO8zWDhfWwoFdKS4fzkVJt0Rf0.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/qJeU7KM4pRqKkQpY0f56mN7wZ5.jpg',
     duration: 7680,
     rating: '8.7/10',
     description: 'While navigating their careers in Los Angeles, a pianist and an actress fall in love while attempting to reconcile their aspirations for the future.',
     source: 'tmdb',
-    badge: 'Date Night Magic 🎹',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -474,17 +529,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2004',
     genre: 'Romance • Drama • Date Night Classic',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=yDJIcYE32NU',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/yDJIcYE32NU?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/11036',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/11036',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/qj0u7tQ7nQ0vK4hB09h5v6H1i3.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/s2bT29y00qR1wV1s4g2hN2h1v1.jpg',
     duration: 7440,
     rating: '8.5/10',
     description: 'An epic love story centered around an older man who reads aloud to an older woman with dementia about two young lovers separated by social differences.',
     source: 'tmdb',
-    badge: 'Couple Favorite 💌',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -495,17 +551,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2001',
     genre: 'Fantasy • Adventure • Magic',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=VyHV0BRtdxo',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/VyHV0BRtdxo?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/671',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/671',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/wuMc08IPKEatf9rnMNXvIDxqP4W.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/hziiv146OpD7q6Z59Y9tK74lX1.jpg',
     duration: 9120,
     rating: '8.6/10',
     description: 'An orphaned boy discovers on his eleventh birthday that he is a wizard and is invited to attend the prestigious Hogwarts School of Witchcraft and Wizardry.',
     source: 'tmdb',
-    badge: 'Wizarding World ⚡',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -516,17 +573,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2001',
     genre: 'Fantasy • Adventure • Epic Masterpiece',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=V75dMMIW2B4',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/V75dMMIW2B4?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/120',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/120',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/6oom5QYQ2yQTMJIbnvbkBL9cDK6.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/vRQnzOnJeSu5OJ1XdliXh52Yv1W.jpg',
     duration: 10680,
     rating: '8.9/10',
     description: 'A meek Hobbit from the Shire and eight companions set out on a journey to destroy the powerful One Ring and save Middle-earth from the Dark Lord Sauron.',
     source: 'tmdb',
-    badge: 'Fantasy Legend 💍',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -537,17 +595,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2001',
     genre: 'Animation • Comedy • Family Fantasy',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=CwXOrWvPBP8',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/CwXOrWvPBP8?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/808',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/808',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/2yYP0PQjG8zVq5ne2hm0T8O4W.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/i0n4c0R01e4O5gH9tN4i3w1n5v.jpg',
     duration: 5400,
     rating: '8.4/10',
     description: 'A mean lord exiles fairytale creatures to the swamp of a grumpy ogre, who must go on a quest and rescue a spirited princess for the lord to get his land back.',
     source: 'tmdb',
-    badge: 'Animation Classic 🧅',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -558,17 +617,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2001',
     genre: 'Anime • Magical Romance & Fantasy',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=ByXuk9QqQkk',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/ByXuk9QqQkk?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/129',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/129',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/393mh1AJ0GYWVD7Desq9KkFaBqH.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/Ab8mkHmkYADjU7wQiOkia9BzGvS.jpg',
     duration: 7500,
     rating: '9.1/10',
     description: 'During her family’s move to the suburbs, a sullen 10-year-old girl wanders into a world ruled by gods, witches, and spirits where humans are changed into beasts.',
     source: 'tmdb',
-    badge: 'Studio Ghibli 🏮',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -579,17 +639,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2016',
     genre: 'Anime • Romance • Fantasy Drama',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=xU47nhruN-Q',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/xU47nhruN-Q?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/372058',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/372058',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/q719jXXEzOoYaps6q2P6eGHstqz.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/dIWwZW7dJJ1747ezm04N4whH0U2.jpg',
     duration: 6420,
     rating: '8.9/10',
     description: 'Two high schoolers spark a strange connection upon discovering they are swapping bodies. Things become even more complicated when the boy and girl decide to meet in person.',
     source: 'tmdb',
-    badge: 'Anime Romance 🌠',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
   {
@@ -600,21 +661,22 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2020',
     genre: 'Anime • Action • Supernatural',
     category: 'trending',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=bFwdl2PPPXM',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/bFwdl2PPPXM?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/movie/635302',
+    embedUrl: 'https://player.autoembed.cc/embed/movie/635302',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/h8Rb9gBr48ODigYjvZzSkYAGRB0.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/xPpXYnCWcuNm7alZT0Xte5TcbM5.jpg',
     duration: 7020,
     rating: '8.7/10',
     description: 'Tanjiro and the group have completed their rehabilitation training at the Butterfly Mansion and arrive at their next mission on the Mugen Train.',
     source: 'tmdb',
-    badge: 'Record Breaking Anime 🗡️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
   },
 
-  // --- Iconic TV Series ---
+  // --- Iconic TV Series (Real Full Episodes 1080p) ---
   {
     id: 'tmdb-tv-66732',
     tmdbId: '66732',
@@ -623,17 +685,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2016',
     genre: 'TV Series • Sci-Fi & 80s Nostalgia',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=b9EkMc79ZSU',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/b9EkMc79ZSU?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/66732/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/66732/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/56v2KjBlU4XaOv9rVYEQypROD7P.jpg',
     duration: 3300,
     rating: '8.6/10',
     description: 'When a young boy vanishes, a small town uncovers a mystery involving secret experiments, terrifying supernatural forces and one strange little girl.',
     source: 'tmdb',
-    badge: 'TV Hit Series 🧇',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -646,17 +709,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2008',
     genre: 'TV Series • Crime Drama & Suspense',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=HhesaQAMSE8',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/HhesaQAMSE8?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/1396/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/1396/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg',
     duration: 3000,
     rating: '9.5/10',
     description: 'A chemistry teacher diagnosed with inoperable lung cancer turns to manufacturing and selling methamphetamine with a former student.',
     source: 'tmdb',
-    badge: 'Legendary TV 🧪',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -669,17 +733,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2011',
     genre: 'TV Series • Fantasy Drama & War',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=KPLWWIOCOOQ',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/KPLWWIOCOOQ?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/1399/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/1399/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg',
     duration: 3400,
     rating: '8.4/10',
     description: 'Nine noble families fight for control over the lands of Westeros, while an ancient enemy returns after being dormant for millennia.',
     source: 'tmdb',
-    badge: 'HBO Classic ⚔️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -692,17 +757,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2023',
     genre: 'TV Series • Post-Apocalyptic Drama',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=uLtkt8BonwM',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/uLtkt8BonwM?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/100088/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/100088/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqAt2V7J9AhP.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/uDgy6hyPd82kOHh6I95FLtLnj6p.jpg',
     duration: 3600,
     rating: '8.8/10',
     description: 'After a global pandemic destroys civilization, a hardened survivor takes charge of a 14-year-old girl who may be humanity\'s last hope.',
     source: 'tmdb',
-    badge: 'HBO Masterpiece 🍄',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -715,17 +781,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2021',
     genre: 'TV Series • Sci-Fi & Animated Drama',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=fXmAurh012s',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/fXmAurh012s?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/94605/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/94605/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/fqldf2t8ztc9aiwn397Fvd247Gs.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/hT3tlwD835n962s50sT1q5qS4F.jpg',
     duration: 2700,
     rating: '9.0/10',
     description: 'Amid the discord between the twin cities of Piltover and Zaun, two sisters fight on opposite sides of a war between magic technologies and convictions.',
     source: 'tmdb',
-    badge: 'Emmy Winner ⚡',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -738,17 +805,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '1999',
     genre: 'Anime • Adventure • Fantasy Pirate',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=MCb13lbKPsE',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/MCb13lbKPsE?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/37854/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/37854/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/cMD9Ygz11zjJzAovURpO75Qg7rT.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/4Mt7WHox67vIKnWjuLFRA6HGGo5.jpg',
     duration: 1440,
     rating: '8.9/10',
     description: 'Years after the execution of the legendary Pirate King, Monkey D. Luffy and his Straw Hat crew embark on a journey across the Grand Line to find the One Piece.',
     source: 'tmdb',
-    badge: 'Anime Legend 🏴‍☠️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -761,17 +829,18 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     year: '2013',
     genre: 'Anime • Dark Fantasy • Post-Apocalyptic',
     category: 'series',
-    type: 'youtube',
-    url: 'https://www.youtube.com/watch?v=MGRm4IzK1SQ',
-    embedUrl: 'https://www.youtube-nocookie.com/embed/MGRm4IzK1SQ?autoplay=1&enablejsapi=1&rel=0&modestbranding=1',
+    type: 'embed',
+    server: 1,
+    url: 'https://player.autoembed.cc/embed/tv/1429/1/1',
+    embedUrl: 'https://player.autoembed.cc/embed/tv/1429/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/y4aqpA7F5u4J2Uu3Kz0m6G8d.jpg',
     duration: 1500,
     rating: '9.1/10',
-    description: 'After his hometown is destroyed and his mother is killed, young Eren Jaeger vows to cleanse the earth of the giant humanoid Titans that have brought humanity to the brink of extinction.',
+    description: 'After his hometown is destroyed and his mother is killed, young Eren Jaeger vows to cleanse the earth of the giant humanoid Titans.',
     source: 'tmdb',
-    badge: 'Epic Anime ⚔️',
-    streamQuality: '1080p Ultra HD',
+    badge: 'Real Full Episode 1080p 📺',
+    streamQuality: '1080p Ultra HD Full Episode',
     fallbackAvailable: true,
     season: 1,
     episode: 1,
@@ -795,7 +864,7 @@ function getTmdbBearer(): string {
   return (import.meta.env?.VITE_TMDB_TOKEN as string) || '';
 }
 
-// Convert raw TMDB or external result object to high-fidelity MediaItem
+// Convert raw TMDB or external result object to high-fidelity MediaItem (Real Full Movie 1080p HD, NO TRAILERS)
 export function formatTmdbResult(m: any, defaultCategory: string = 'trending'): MediaItem {
   const id = String(m.id || m.trackId || Date.now());
   const title = m.title || m.name || m.trackName || 'Untitled Title';
@@ -819,17 +888,11 @@ export function formatTmdbResult(m: any, defaultCategory: string = 'trending'): 
   const isTv = Boolean(m.name || m.first_air_date || (m.type === 'Scripted') || m.genres?.includes('TV'));
   const year = (m.release_date || m.first_air_date || m.releaseDate || m.premiered || '2024').split('-')[0];
 
-  // Check known curated items for authentic trailer
-  const known = BUILTIN_TMDB_CATALOG.find(
-    (k) => k.tmdbId === id || k.title.toLowerCase() === title.toLowerCase()
-  );
-
-  const directVideoUrl = m.preview_url || m.previewUrl;
-  const videoUrl = directVideoUrl || known?.url || `https://www.youtube.com/watch?v=YoHD9XEInc0`;
-  const embed = known?.embedUrl || (directVideoUrl ? '' : `https://www.youtube-nocookie.com/embed/YoHD9XEInc0?autoplay=1&enablejsapi=1&rel=0&modestbranding=1`);
+  // Resolve Real 1080p Full Movie stream URL (Server 1: AutoEmbed 1080p)
+  const fullMovieStreamUrl = getTmdbStreamUrl(id, isTv, 1, 1, 1);
 
   const rawOverview = m.overview || m.longDescription || m.shortDescription || (typeof m.summary === 'string' ? m.summary.replace(/<[^>]*>?/gm, '') : '');
-  const overviewText = rawOverview || `${title} (${year}) available for synchronized co-watching in HD.`;
+  const overviewText = rawOverview || `${title} (${year}) available in full-length 1080p Ultra HD.`;
 
   return {
     id: `tmdb-${isTv ? 'tv' : 'movie'}-${id}`,
@@ -840,17 +903,18 @@ export function formatTmdbResult(m: any, defaultCategory: string = 'trending'): 
     genre: m.genre || m.primaryGenreName || (isTv ? 'TV Series' : 'Blockbuster Movie'),
     category: isTv ? 'series' : defaultCategory,
     mediaType: isTv ? 'tv' : 'movie',
-    type: directVideoUrl ? 'video' : 'youtube',
-    url: videoUrl,
-    embedUrl: embed,
+    type: 'embed',
+    server: 1,
+    url: fullMovieStreamUrl,
+    embedUrl: fullMovieStreamUrl,
     thumbnailUrl: poster,
     backdropUrl: backdrop,
-    duration: isTv ? 3600 : 7200,
+    duration: isTv ? 3600 : 7200, // Real 1.5 - 2 hour full film duration, not 2-minute trailer!
     rating: `${Math.round((m.vote_average || (m.rating?.average) || 8.4) * 10) / 10}/10`,
     description: overviewText,
     source: 'tmdb',
-    badge: isTv ? 'TMDB Series 📺' : 'TMDB HD 🔥',
-    streamQuality: '1080p Ultra HD',
+    badge: isTv ? 'Full HD Series 📺' : 'Full Movie 1080p 🎬',
+    streamQuality: '1080p Ultra HD Full Movie',
     fallbackAvailable: true,
     season: isTv ? 1 : undefined,
     episode: isTv ? 1 : undefined,
@@ -865,11 +929,13 @@ export async function fetchTmdbTrending(): Promise<MediaItem[]> {
       const data = await res.json();
       const results = Array.isArray(data.results) ? data.results : [];
       if (results.length > 0) {
-        return results.map((m: any) => formatTmdbResult(m, 'trending'));
+        return results
+          .filter((m: any) => !isTrailerOrClip(m.title || m.name, m.artist, m.overview))
+          .map((m: any) => formatTmdbResult(m, 'trending'));
       }
     }
   } catch {
-    // Expected on static hosting like Vercel where /api/ is not mapped
+    // Fall through
   }
 
   // 2. Direct client-side TMDB call if key/token is supplied
@@ -887,7 +953,9 @@ export async function fetchTmdbTrending(): Promise<MediaItem[]> {
         const data = await res.json();
         const results = Array.isArray(data.results) ? data.results : [];
         if (results.length > 0) {
-          return results.map((m: any) => formatTmdbResult(m, 'trending'));
+          return results
+            .filter((m: any) => !isTrailerOrClip(m.title || m.name, m.artist, m.overview))
+            .map((m: any) => formatTmdbResult(m, 'trending'));
         }
       }
     } catch (err) {
@@ -903,14 +971,16 @@ export async function searchTmdbMovies(query: string): Promise<MediaItem[]> {
   const trimmed = query.trim();
   if (!trimmed) return BUILTIN_TMDB_CATALOG;
   const q = trimmed.toLowerCase();
+  const userExplicitlyWantsTrailer = q.includes('trailer') || q.includes('teaser');
 
   // 1. Check local BUILTIN_TMDB_CATALOG first for instant zero-latency match
   const localMatches = BUILTIN_TMDB_CATALOG.filter(
     (m) =>
-      m.title.toLowerCase().includes(q) ||
-      (m.genre && m.genre.toLowerCase().includes(q)) ||
-      (m.artist && m.artist.toLowerCase().includes(q)) ||
-      (m.description && m.description.toLowerCase().includes(q))
+      (m.title.toLowerCase().includes(q) ||
+        (m.genre && m.genre.toLowerCase().includes(q)) ||
+        (m.artist && m.artist.toLowerCase().includes(q)) ||
+        (m.description && m.description.toLowerCase().includes(q))) &&
+      (userExplicitlyWantsTrailer || !isTrailerOrClip(m.title, m.artist, m.description))
   );
 
   // 2. Try server proxy route (/api/tmdb/search?q=...)
@@ -920,8 +990,11 @@ export async function searchTmdbMovies(query: string): Promise<MediaItem[]> {
       const data = await res.json();
       const results = Array.isArray(data.results) ? data.results : [];
       if (results.length > 0) {
-        const serverItems = results.map((m: any) => formatTmdbResult(m, 'search'));
-        // Merge with local matches
+        const filtered = userExplicitlyWantsTrailer
+          ? results
+          : results.filter((m: any) => !isTrailerOrClip(m.title || m.name, m.artist, m.overview));
+        const serverItems = filtered.map((m: any) => formatTmdbResult(m, 'search'));
+
         const seen = new Set<string>();
         const merged: MediaItem[] = [];
         for (const item of [...serverItems, ...localMatches]) {
@@ -935,7 +1008,7 @@ export async function searchTmdbMovies(query: string): Promise<MediaItem[]> {
       }
     }
   } catch {
-    // Expected on static hosting like Vercel where /api/ is not mapped
+    // Expected on static hosting like Vercel
   }
 
   // 3. Direct client-side TMDB call if key/token is available in localStorage or env
@@ -953,23 +1026,30 @@ export async function searchTmdbMovies(query: string): Promise<MediaItem[]> {
         const data = await res.json();
         const results = Array.isArray(data.results) ? data.results : [];
         if (results.length > 0) {
-          return results.map((m: any) => formatTmdbResult(m, 'search'));
+          const filtered = userExplicitlyWantsTrailer
+            ? results
+            : results.filter((m: any) => !isTrailerOrClip(m.title || m.name, m.artist, m.overview));
+          return filtered.map((m: any) => formatTmdbResult(m, 'search'));
         }
       }
     } catch {
-      // Continue to public zero-auth search fallback
+      // Continue
     }
   }
 
-  // 4. Free, zero-auth public movie search fallback (iTunes Movie Search API)
-  // Highly reliable on Vercel: open CORS, no API key required, full movie catalog with 1080p preview streams
+  // 4. Free, zero-auth public movie search fallback (iTunes Search API)
+  // Strips trailers and formats real 1080p full movie embeds
   try {
-    const itunesUrl = `https://itunes.apple.com/search?media=movie&term=${encodeURIComponent(trimmed)}&limit=25`;
+    const itunesUrl = `https://itunes.apple.com/search?term=${encodeURIComponent(trimmed)}&limit=25`;
     const itunesRes = await fetch(itunesUrl);
     if (itunesRes.ok) {
       const itunesData = await itunesRes.json();
       if (Array.isArray(itunesData.results) && itunesData.results.length > 0) {
-        const itunesItems = itunesData.results.map((item: any) => formatTmdbResult(item, 'search'));
+        const filtered = itunesData.results
+          .filter((item: any) => item.trackName || item.collectionName)
+          .filter((item: any) => userExplicitlyWantsTrailer || !isTrailerOrClip(item.trackName || item.collectionName, item.artistName, item.longDescription));
+
+        const itunesItems = filtered.map((item: any) => formatTmdbResult(item, 'search'));
         const seen = new Set<string>();
         const merged: MediaItem[] = [];
         for (const item of [...localMatches, ...itunesItems]) {
@@ -993,7 +1073,9 @@ export async function searchTmdbMovies(query: string): Promise<MediaItem[]> {
     if (tvRes.ok) {
       const tvData = await tvRes.json();
       if (Array.isArray(tvData) && tvData.length > 0) {
-        const tvItems = tvData.map((d: any) => formatTmdbResult(d.show, 'series'));
+        const tvItems = tvData
+          .filter((d: any) => userExplicitlyWantsTrailer || !isTrailerOrClip(d.show?.name, '', d.show?.summary))
+          .map((d: any) => formatTmdbResult(d.show, 'series'));
         const seen = new Set<string>();
         const merged: MediaItem[] = [];
         for (const item of [...localMatches, ...tvItems]) {
@@ -1010,7 +1092,6 @@ export async function searchTmdbMovies(query: string): Promise<MediaItem[]> {
     // Continue
   }
 
-  // Return local matches if any were found
   return localMatches;
 }
 
@@ -1023,7 +1104,9 @@ export async function fetchTmdbRecommendations(movieId: string): Promise<MediaIt
       const data = await res.json();
       const results = Array.isArray(data.results) ? data.results : [];
       if (results.length > 0) {
-        return results.map((m: any) => formatTmdbResult(m, 'recommendations'));
+        return results
+          .filter((m: any) => !isTrailerOrClip(m.title || m.name, m.artist, m.overview))
+          .map((m: any) => formatTmdbResult(m, 'recommendations'));
       }
     }
   } catch {

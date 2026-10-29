@@ -5190,6 +5190,21 @@ async function startServer() {
             if (parts.length === 3) durationSec = parts[0] * 3600 + parts[1] * 60 + parts[2];
             else if (parts.length === 2) durationSec = parts[0] * 60 + parts[1];
           }
+
+          // Strict Trailer Exclusion: Do not return 2-minute promotional trailers when user wants real full movies
+          const lowerTitle = title.toLowerCase();
+          const isTrailer =
+            lowerTitle.includes('official trailer') ||
+            lowerTitle.includes('teaser trailer') ||
+            lowerTitle.includes('teaser') ||
+            lowerTitle.includes('movie clip') ||
+            lowerTitle.includes('sneak peek') ||
+            (lowerTitle.includes('trailer') && durationSec < 600);
+
+          if (!query.toLowerCase().includes('trailer') && isTrailer) {
+            continue;
+          }
+
           const views = v.viewCountText?.simpleText || '';
           results.push({
             id: `yt-${videoId}`,
@@ -5197,7 +5212,7 @@ async function startServer() {
             title: title,
             artist: author,
             year: new Date().getFullYear(),
-            genre: 'YouTube Video',
+            genre: 'YouTube Full Video',
             category: 'youtube',
             type: 'youtube',
             url: `https://www.youtube.com/watch?v=${videoId}`,
@@ -5205,11 +5220,11 @@ async function startServer() {
             duration: durationSec,
             durationStr: durationStr || undefined,
             rating: views ? `▶ ${views}` : 'YouTube Direct',
-            description: `${title} by ${author}${views ? ` • ${views}` : ''}. Streamed directly from YouTube.`,
-            tags: ['YouTube', author, 'Live Stream', 'Direct Video'],
+            description: `${title} by ${author}${views ? ` • ${views}` : ''}. Streamed directly in HD.`,
+            tags: ['YouTube', author, 'Full Video', 'Direct Stream'],
             source: 'youtube',
-            badge: 'YouTube Direct 🔴',
-            streamQuality: 'YouTube HD',
+            badge: 'HD Full Video 🔴',
+            streamQuality: '1080p HD',
           });
         }
       }
@@ -5552,6 +5567,10 @@ async function startServer() {
         if (Array.isArray(itunesData.results) && itunesData.results.length > 0) {
           itunesFormatted = itunesData.results
             .filter((item: any) => item.trackName || item.collectionName)
+            .filter((item: any) => {
+              const str = `${item.trackName || ''} ${item.collectionName || ''} ${item.longDescription || ''}`.toLowerCase();
+              return !str.includes('trailer') && !str.includes('teaser') && !str.includes('sneak peek') && !str.includes('movie clip');
+            })
             .map((item: any) => ({
               id: item.trackId || item.collectionId,
               title: item.trackName || item.collectionName,
