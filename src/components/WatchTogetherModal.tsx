@@ -146,6 +146,24 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     return Boolean(mediaSyncState?.isPlaying);
   });
   const [currentTime, setCurrentTime] = useState(0);
+  const currentTimeRef = useRef(0);
+  useEffect(() => {
+    currentTimeRef.current = currentTime;
+  }, [currentTime]);
+
+  // Continuously advance local timer every second while playing embedded media
+  useEffect(() => {
+    if (!isPlaying || currentMedia.type !== 'embed') return;
+    const timer = setInterval(() => {
+      setCurrentTime((prev) => {
+        const next = prev + 1;
+        currentTimeRef.current = next;
+        return next;
+      });
+    }, 1000);
+    return () => clearInterval(timer);
+  }, [isPlaying, currentMedia.type]);
+
   const [duration, setDuration] = useState(0);
   const [movieVolume, setMovieVolume] = useState(0.85);
   const [isMutedMovie, setIsMutedMovie] = useState(false);
@@ -487,12 +505,20 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       setIsPlaying(mediaSyncState.isPlaying);
       isPlayingRef.current = mediaSyncState.isPlaying;
       setCurrentTime(mediaSyncState.currentTime);
+      currentTimeRef.current = mediaSyncState.currentTime;
 
       const isYt = currentMedia.type === 'youtube' || Boolean(ytId);
-      if (isYt) {
+      const isEmbed = currentMedia.type === 'embed' || currentMedia.source === 'tmdb';
+
+      if (isEmbed) {
+        if (!mediaSyncState.isPlaying) {
+          setIsEmbedSuspended(true);
+        } else {
+          setIsEmbedSuspended(false);
+          setIsPlayerActive(true);
+        }
+      } else if (isYt) {
         sendYouTubeCommand(mediaSyncState.isPlaying ? 'playVideo' : 'pauseVideo');
-      } else {
-        sendCinemaCommand(mediaSyncState.isPlaying ? 'play' : 'pause');
       }
     }
   }, [mediaSyncState, currentMedia.id, currentMedia.type, partnerName, currentUserId, ytId, sendYouTubeCommand, sendCinemaCommand]);
@@ -521,10 +547,6 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
 
       setIsPlaying(nextState);
       isPlayingRef.current = nextState;
-      if (nextState) {
-        setIsPlayerActive(true);
-        setIsEmbedSuspended(false);
-      }
 
       // Show on-screen action ripple/HUD
       setScreenActionIndicator(nextState ? 'play' : 'pause');
@@ -535,23 +557,51 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
 
       const mediaType = currentMedia.type;
       const isYt = mediaType === 'youtube' || Boolean(ytId);
+      const isEmbed = mediaType === 'embed' || currentMedia.source === 'tmdb';
 
-      if (mediaType === 'video' && videoRef.current) {
+      if (isEmbed) {
+        if (!nextState) {
+          // PAUSE: Immediately suspend and unmount the iframe so all audio and video stop completely!
+          setIsEmbedSuspended(true);
+        } else {
+          // RESUME: Restore stream with the exact current timestamp
+          const cleanId = String(currentMedia.tmdbId || currentMedia.id).replace(/^tmdb-(movie|tv)-/, '');
+          const isTv = isSeriesItem(currentMedia);
+          const srv = currentMedia.server || 1;
+          const currentSec = currentTimeRef.current || currentTime;
+          const resumedUrl = getTmdbStreamUrl(
+            cleanId,
+            isTv,
+            currentMedia.season || 1,
+            currentMedia.episode || 1,
+            srv,
+            currentSec
+          );
+          setCurrentMedia((prev) => ({
+            ...prev,
+            url: resumedUrl,
+            embedUrl: resumedUrl,
+          }));
+          setIsEmbedSuspended(false);
+          setIsPlayerActive(true);
+        }
+      } else if (mediaType === 'video' && videoRef.current) {
         if (nextState) {
+          setIsPlayerActive(true);
           videoRef.current.play().catch(() => {});
         } else {
           videoRef.current.pause();
         }
       } else if (isYt) {
+        if (nextState) {
+          setIsPlayerActive(true);
+        }
         sendYouTubeCommand(nextState ? 'playVideo' : 'pauseVideo');
-      } else {
-        // TMDB & embedded streaming cinema: send command without destroying iframe
-        sendCinemaCommand(nextState ? 'play' : 'pause');
       }
 
-      broadcastSync(nextState, videoRef.current ? videoRef.current.currentTime : currentTime);
+      broadcastSync(nextState, videoRef.current ? videoRef.current.currentTime : (currentTimeRef.current || currentTime));
     },
-    [currentMedia.type, ytId, sendYouTubeCommand, sendCinemaCommand, broadcastSync, currentTime]
+    [currentMedia, ytId, sendYouTubeCommand, broadcastSync, currentTime]
   );
 
   // Dedicated Stop Movie & Silence Stream
@@ -1049,6 +1099,30 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         }
       }
       if (!data || typeof data !== 'object') return;
+
+      // Handle VidLink native PLAYER_EVENT (player broadcasts play, pause, timeupdate)
+      if (data?.type === 'PLAYER_EVENT' && data.data) {
+        const { event: evt, currentTime: time, duration: dur } = data.data;
+        if (typeof time === 'number' && !isNaN(time)) {
+          setCurrentTime(time);
+          currentTimeRef.current = time;
+        }
+        if (typeof dur === 'number' && dur > 0) {
+          setDuration(dur);
+        }
+        if (evt === 'pause') {
+          setIsPlaying(false);
+          isPlayingRef.current = false;
+          broadcastSync(false, typeof time === 'number' ? time : currentTimeRef.current);
+        } else if (evt === 'play') {
+          setIsPlaying(true);
+          isPlayingRef.current = true;
+          broadcastSync(true, typeof time === 'number' ? time : currentTimeRef.current);
+        } else if (evt === 'ended') {
+          handleVideoFinished();
+        }
+        return;
+      }
 
       // Handle video finished -> autoplay next
       if (
@@ -2733,18 +2807,97 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
           ) : (currentMedia.type === 'embed' || currentMedia.source === 'tmdb' || Boolean(currentMedia.embedUrl)) ? (
             /* 3. Embedded Synced TMDB Cinema Player */
             <div className={`w-full h-full aspect-video ${isImmersive ? 'max-h-full' : 'max-h-[62vh]'} relative bg-black flex items-center justify-center overflow-hidden`}>
-              {isEmbedSuspended ? (
+              {isEmbedSuspended || !isPlaying ? (
+                /* Complete Cinema Pause Screen: unmounts iframe so audio/video stop immediately, displays exact timestamp & resume button */
                 <div
                   onClick={() => togglePlayPause(true)}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/95 cursor-pointer z-20 animate-in fade-in select-none"
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/90 backdrop-blur-md cursor-pointer z-20 animate-in fade-in select-none p-4"
+                  title="Click anywhere to resume movie playback"
                 >
-                  <button
-                    type="button"
-                    className="w-20 h-20 rounded-full bg-rose-500 hover:bg-rose-600 text-white flex items-center justify-center shadow-2xl transition-all scale-100 hover:scale-110 mb-3 cursor-pointer"
-                  >
-                    <Play className="w-9 h-9 ml-1 fill-white" />
-                  </button>
-                  <span className="text-white text-xs font-semibold">Stream Stopped • Click to Resume</span>
+                  {/* Subtle poster backdrop */}
+                  {(currentMedia.backdropUrl || currentMedia.thumbnailUrl) && (
+                    <img
+                      src={currentMedia.backdropUrl || currentMedia.thumbnailUrl}
+                      alt=""
+                      className="absolute inset-0 w-full h-full object-cover opacity-20 filter blur-sm pointer-events-none"
+                    />
+                  )}
+
+                  {/* Pause Modal Card */}
+                  <div className="relative z-10 flex flex-col items-center text-center max-w-md bg-slate-950/80 p-6 sm:p-8 rounded-3xl border border-rose-500/30 shadow-2xl backdrop-blur-md">
+                    <button
+                      type="button"
+                      id="btn-movie-overlay-resume"
+                      onClick={(e) => {
+                        e.stopPropagation();
+                        togglePlayPause(true);
+                      }}
+                      className="w-18 h-18 sm:w-20 sm:h-20 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white flex items-center justify-center shadow-2xl shadow-rose-500/50 transition-all scale-100 hover:scale-110 mb-3 border-2 border-white/30 cursor-pointer animate-pulse"
+                      title="Resume movie playback"
+                    >
+                      <Play className="w-9 h-9 ml-1 fill-white text-white" />
+                    </button>
+
+                    <h4 className="text-white text-base sm:text-lg font-bold tracking-tight mb-1 line-clamp-1">
+                      {isSeriesItem(currentMedia) ? cleanSeriesTitle(currentMedia.title) : currentMedia.title}
+                    </h4>
+
+                    <div className="flex items-center gap-2 mb-3">
+                      <span className="px-2.5 py-1 rounded-full bg-slate-900 border border-rose-500/40 text-rose-300 text-xs font-semibold flex items-center gap-1.5 shadow">
+                        <Pause className="w-3.5 h-3.5 fill-current" />
+                        <span>Movie Paused • {formatTime(currentTime)}</span>
+                      </span>
+                      {currentMedia.streamQuality && (
+                        <span className="px-2 py-0.5 rounded bg-emerald-500/20 text-emerald-300 text-[10px] font-bold border border-emerald-500/30">
+                          {currentMedia.streamQuality}
+                        </span>
+                      )}
+                    </div>
+
+                    <p className="text-slate-400 text-xs mb-4">
+                      Click anywhere or press <kbd className="px-1.5 py-0.5 bg-slate-800 rounded border border-slate-700 text-white font-mono text-[10px]">Space</kbd> to resume playback
+                    </p>
+
+                    <div className="flex items-center gap-2 flex-wrap justify-center">
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          togglePlayPause(true);
+                        }}
+                        className="px-4 py-2 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-md shadow-rose-600/30 transition cursor-pointer flex items-center gap-1.5"
+                      >
+                        <Play className="w-3.5 h-3.5 fill-current" />
+                        <span>Resume Playback</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          switchToFallbackStream();
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-900 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                        title="Switch to backup 1080p stream server"
+                      >
+                        <RefreshCw className="w-3.5 h-3.5 text-rose-400" />
+                        <span>Switch Server</span>
+                      </button>
+
+                      <button
+                        type="button"
+                        onClick={(e) => {
+                          e.stopPropagation();
+                          handleStopMovie();
+                        }}
+                        className="px-3 py-2 rounded-xl bg-slate-900/80 hover:bg-rose-950/80 text-slate-400 hover:text-rose-200 border border-slate-800 text-xs font-semibold transition cursor-pointer flex items-center gap-1.5"
+                        title="Stop movie and return to catalog"
+                      >
+                        <VolumeX className="w-3.5 h-3.5" />
+                        <span>Stop Movie</span>
+                      </button>
+                    </div>
+                  </div>
                 </div>
               ) : (
                 <iframe
@@ -2784,43 +2937,6 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                       {screenActionIndicator === 'play' ? 'Resumed' : 'Paused'}
                     </span>
                   </div>
-                </div>
-              )}
-
-              {/* TMDB Cinema Paused Overlay */}
-              {!isPlaying && (
-                <div
-                  onClick={() => togglePlayPause(true)}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/75 backdrop-blur-sm cursor-pointer z-20 animate-in fade-in select-none"
-                  title="Click to resume playback"
-                >
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      togglePlayPause(true);
-                    }}
-                    className="w-20 h-20 rounded-full bg-gradient-to-tr from-rose-500 to-pink-500 hover:from-rose-400 hover:to-pink-400 text-white flex items-center justify-center shadow-2xl transition-all scale-100 hover:scale-110 mb-3 border border-rose-300/40 cursor-pointer"
-                    title="Resume movie playback"
-                  >
-                    <Play className="w-9 h-9 ml-1 fill-white" />
-                  </button>
-                  <div className="px-4 py-2 rounded-2xl bg-slate-950/90 border border-slate-700 text-white text-xs font-semibold shadow-xl flex items-center gap-2 backdrop-blur-md mb-2">
-                    <Pause className="w-3.5 h-3.5 text-rose-400" />
-                    <span>Cinema Paused • Click or Press Space to Resume</span>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={(e) => {
-                      e.stopPropagation();
-                      handleStopMovie();
-                    }}
-                    className="px-3 py-1 rounded-lg bg-slate-900/90 hover:bg-slate-800 text-slate-300 hover:text-white border border-slate-700 text-[11px] font-medium transition cursor-pointer flex items-center gap-1.5 shadow"
-                    title="Stop movie and pause stream"
-                  >
-                    <VolumeX className="w-3 h-3 text-rose-400" />
-                    <span>Stop Movie</span>
-                  </button>
                 </div>
               )}
 

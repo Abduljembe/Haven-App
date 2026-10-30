@@ -6,12 +6,15 @@ export function getTmdbStreamUrl(
   isTv: boolean = false,
   season: number = 1,
   episode: number = 1,
-  server: number = 1
+  server: number = 1,
+  startAtSec?: number
 ): string {
   const cleanId = String(tmdbId).trim().replace(/^tmdb-(movie|tv)-/, '');
   const isImdb = cleanId.startsWith('tt');
   const s = season || 1;
   const e = episode || 1;
+  const sec = startAtSec && startAtSec > 3 ? Math.floor(startAtSec) : 0;
+  const startQuery = sec > 0 ? `&startAt=${sec}` : '';
 
   if (isTv) {
     switch (server) {
@@ -31,7 +34,7 @@ export function getTmdbStreamUrl(
         // VidLink Pro (Ultra-fast 1080p HD, clean, responsive)
         return isImdb
           ? `https://vidsrc.to/embed/tv/${cleanId}/${s}/${e}`
-          : `https://vidlink.pro/tv/${cleanId}/${s}/${e}`;
+          : `https://vidlink.pro/tv/${cleanId}/${s}/${e}?autoplay=true${startQuery}`;
     }
   } else {
     switch (server) {
@@ -49,7 +52,7 @@ export function getTmdbStreamUrl(
       case 1:
       default:
         // VidLink Pro 1080p Ultra HD
-        return `https://vidlink.pro/movie/${cleanId}`;
+        return `https://vidlink.pro/movie/${cleanId}?autoplay=true${startQuery}`;
     }
   }
 }
