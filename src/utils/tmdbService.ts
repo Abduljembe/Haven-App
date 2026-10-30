@@ -9,29 +9,47 @@ export function getTmdbStreamUrl(
   server: number = 1
 ): string {
   const cleanId = String(tmdbId).trim().replace(/^tmdb-(movie|tv)-/, '');
+  const isImdb = cleanId.startsWith('tt');
+  const s = season || 1;
+  const e = episode || 1;
+
   if (isTv) {
     switch (server) {
       case 2:
-        return `https://vidsrc.cc/v2/embed/tv/${cleanId}/${season}/${episode}`;
+        // VidSrc To (Fast 1080p CDN, supports both TMDB and IMDb IDs)
+        return `https://vidsrc.to/embed/tv/${cleanId}/${s}/${e}`;
       case 3:
-        return `https://embed.su/embed/tv/${cleanId}/${season}/${episode}`;
+        // VidSrc VIP / Me (Direct Stream Mirror)
+        return isImdb
+          ? `https://vidsrc.me/embed/tv?imdb=${cleanId}&season=${s}&episode=${e}`
+          : `https://vidsrc.me/embed/tv?tmdb=${cleanId}&season=${s}&episode=${e}`;
       case 4:
-        return `https://multiembed.mov/?video_id=${cleanId}&tmdb=1&s=${season}&e=${episode}`;
+        // MultiEmbed 1080p Mirror
+        return `https://multiembed.mov/?video_id=${cleanId}${isImdb ? '' : '&tmdb=1'}&s=${s}&e=${e}`;
       case 1:
       default:
-        return `https://player.autoembed.cc/embed/tv/${cleanId}/${season}/${episode}`;
+        // VidLink Pro (Ultra-fast 1080p HD, clean, responsive)
+        return isImdb
+          ? `https://vidsrc.to/embed/tv/${cleanId}/${s}/${e}`
+          : `https://vidlink.pro/tv/${cleanId}/${s}/${e}`;
     }
   } else {
     switch (server) {
       case 2:
-        return `https://vidsrc.cc/v2/embed/movie/${cleanId}`;
+        // VidSrc To (Fast 1080p CDN)
+        return `https://vidsrc.to/embed/movie/${cleanId}`;
       case 3:
-        return `https://embed.su/embed/movie/${cleanId}`;
+        // VidSrc VIP / Me (Direct Stream Mirror)
+        return isImdb
+          ? `https://vidsrc.me/embed/movie?imdb=${cleanId}`
+          : `https://vidsrc.me/embed/movie?tmdb=${cleanId}`;
       case 4:
-        return `https://multiembed.mov/?video_id=${cleanId}&tmdb=1`;
+        // MultiEmbed 1080p Mirror
+        return `https://multiembed.mov/?video_id=${cleanId}${isImdb ? '' : '&tmdb=1'}`;
       case 1:
       default:
-        return `https://player.autoembed.cc/embed/movie/${cleanId}`;
+        // VidLink Pro 1080p Ultra HD
+        return `https://vidlink.pro/movie/${cleanId}`;
     }
   }
 }
@@ -69,8 +87,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/27205',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/27205',
+    url: 'https://vidlink.pro/movie/27205',
+    embedUrl: 'https://vidlink.pro/movie/27205',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/oYuLEt3zVCKq57qu2F8dT7NIa6f.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/8ZTVqvKDQ8emSGUEMjsS4yHAwrp.jpg',
     duration: 8880,
@@ -91,8 +109,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/157336',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/157336',
+    url: 'https://vidlink.pro/movie/157336',
+    embedUrl: 'https://vidlink.pro/movie/157336',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/gEU2QniE6E77NI6lCU6MxlNBvIx.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/xJHokMbljvjADYdit5fK5VQsXEG.jpg',
     duration: 10140,
@@ -113,8 +131,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/597',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/597',
+    url: 'https://vidlink.pro/movie/597',
+    embedUrl: 'https://vidlink.pro/movie/597',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/9xjZS2rlVxm8SFx8kPC3aIGCOYQ.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/6VmF2397ISx6AZzlwhtGR59x7Yn.jpg',
     duration: 11640,
@@ -135,8 +153,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/693134',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/693134',
+    url: 'https://vidlink.pro/movie/693134',
+    embedUrl: 'https://vidlink.pro/movie/693134',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1pdfLvkbY9ohJlCjQH2CZjjYVvJ.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/xOMo8BRK7PfcJv9JCnx7s5hj0x2.jpg',
     duration: 9960,
@@ -157,8 +175,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/569094',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/569094',
+    url: 'https://vidlink.pro/movie/569094',
+    embedUrl: 'https://vidlink.pro/movie/569094',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8Vt6mWEReuy4Of61Lnj5Xj704m8.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/4HodYYKEIsGOdinkGi2Ucz6X9i0.jpg',
     duration: 8400,
@@ -179,8 +197,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/872585',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/872585',
+    url: 'https://vidlink.pro/movie/872585',
+    embedUrl: 'https://vidlink.pro/movie/872585',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8Gxv8gSFCU0XGDykEGv7zR1n2ua.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/nb3xI8XI3xyYBYIRZEda8vdAj8f.jpg',
     duration: 10800,
@@ -201,8 +219,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/155',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/155',
+    url: 'https://vidlink.pro/movie/155',
+    embedUrl: 'https://vidlink.pro/movie/155',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/qJ2tW6WMUDux911r6m7haRef0WH.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/nMKdUUepR0i5zn0y1T4CsSB5chy.jpg',
     duration: 9120,
@@ -223,8 +241,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/414906',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/414906',
+    url: 'https://vidlink.pro/movie/414906',
+    embedUrl: 'https://vidlink.pro/movie/414906',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/74xTEgt7R36Fpooo50r9T25onhq.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/b0PlSFdDwbyK0cf5RxwDpaOJQvQ.jpg',
     duration: 10560,
@@ -245,8 +263,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/533535',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/533535',
+    url: 'https://vidlink.pro/movie/533535',
+    embedUrl: 'https://vidlink.pro/movie/533535',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/8cdWjvZQUExUUTzyp4t6EDMubfO.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/yDHYTfA3R0jFYba16jBB1ef8oIt.jpg',
     duration: 7680,
@@ -267,8 +285,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/299534',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/299534',
+    url: 'https://vidlink.pro/movie/299534',
+    embedUrl: 'https://vidlink.pro/movie/299534',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/or06FN3Dka5tukK1e9sl16pB3iy.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/7RyHsO4yDXtBv1zUU3mTpHeQ0d5.jpg',
     duration: 10860,
@@ -289,8 +307,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/634649',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/634649',
+    url: 'https://vidlink.pro/movie/634649',
+    embedUrl: 'https://vidlink.pro/movie/634649',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1g0dhYtq4irTY1GPXvft6k4YLjm.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/iQFcwSGbZXMkeyKrxbPnwnRo5fl.jpg',
     duration: 8880,
@@ -311,8 +329,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/19995',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/19995',
+    url: 'https://vidlink.pro/movie/19995',
+    embedUrl: 'https://vidlink.pro/movie/19995',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/kyeqWdyUXW608qlYkRqosgbbJyK.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/o075VitstnauVK69qiY1Icg4Cqo.jpg',
     duration: 9720,
@@ -333,8 +351,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/76600',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/76600',
+    url: 'https://vidlink.pro/movie/76600',
+    embedUrl: 'https://vidlink.pro/movie/76600',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/t6HIqrRAclMCA60NsSmeqe9RmNV.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/s16H6tpK2utvwDtzZ8Qy4qm5Emw.jpg',
     duration: 11520,
@@ -355,8 +373,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/603',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/603',
+    url: 'https://vidlink.pro/movie/603',
+    embedUrl: 'https://vidlink.pro/movie/603',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/f89U3ADr1oiB1s9GkdPOEpXUk5H.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/7u3fhRw1ql7080w1RjC6oN2hV8v.jpg',
     duration: 8160,
@@ -377,8 +395,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/346698',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/346698',
+    url: 'https://vidlink.pro/movie/346698',
+    embedUrl: 'https://vidlink.pro/movie/346698',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/iuFNMS8U5cb6xfzi51Dbkovj7vM.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/ctMserH8g2SeOAnCw5gFjd2NTLq.jpg',
     duration: 6840,
@@ -399,8 +417,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/98',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/98',
+    url: 'https://vidlink.pro/movie/98',
+    embedUrl: 'https://vidlink.pro/movie/98',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/ty8TGRuvJLPUmAR1H1nRIsgwvim.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/Ar7sH4kH0H8Y18k4oGkXz5VqI.jpg',
     duration: 9300,
@@ -421,8 +439,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/238',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/238',
+    url: 'https://vidlink.pro/movie/238',
+    embedUrl: 'https://vidlink.pro/movie/238',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/3bhkrj58Vtu7enYsRolD1fZdja1.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/tmU7GeKVybMWF9YOCagmsSz96g7.jpg',
     duration: 10500,
@@ -443,8 +461,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/278',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/278',
+    url: 'https://vidlink.pro/movie/278',
+    embedUrl: 'https://vidlink.pro/movie/278',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/9cqNxx0GxF0bflZmeSMuL5tnGzr.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/kXfqcdQKsToO0OUXHcrrNCHDBzO.jpg',
     duration: 8520,
@@ -465,8 +483,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/680',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/680',
+    url: 'https://vidlink.pro/movie/680',
+    embedUrl: 'https://vidlink.pro/movie/680',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/d5iIlFn5s0ImszYzBPb8JPIfbXD.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/suaEOtk1N1sgg2MTM7oZd2cfVp3.jpg',
     duration: 9240,
@@ -487,8 +505,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/550',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/550',
+    url: 'https://vidlink.pro/movie/550',
+    embedUrl: 'https://vidlink.pro/movie/550',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/pB8BM7pdSp6B6Ih7QZ4DrQ3PmJK.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/hZkgoQYus5vegHoetLkCJzb17zJ.jpg',
     duration: 8340,
@@ -509,8 +527,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/313369',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/313369',
+    url: 'https://vidlink.pro/movie/313369',
+    embedUrl: 'https://vidlink.pro/movie/313369',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/uDO8zWDhfWwoFdKS4fzkVJt0Rf0.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/qJeU7KM4pRqKkQpY0f56mN7wZ5.jpg',
     duration: 7680,
@@ -531,8 +549,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/11036',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/11036',
+    url: 'https://vidlink.pro/movie/11036',
+    embedUrl: 'https://vidlink.pro/movie/11036',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/qj0u7tQ7nQ0vK4hB09h5v6H1i3.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/s2bT29y00qR1wV1s4g2hN2h1v1.jpg',
     duration: 7440,
@@ -553,8 +571,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/671',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/671',
+    url: 'https://vidlink.pro/movie/671',
+    embedUrl: 'https://vidlink.pro/movie/671',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/wuMc08IPKEatf9rnMNXvIDxqP4W.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/hziiv146OpD7q6Z59Y9tK74lX1.jpg',
     duration: 9120,
@@ -575,8 +593,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/120',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/120',
+    url: 'https://vidlink.pro/movie/120',
+    embedUrl: 'https://vidlink.pro/movie/120',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/6oom5QYQ2yQTMJIbnvbkBL9cDK6.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/vRQnzOnJeSu5OJ1XdliXh52Yv1W.jpg',
     duration: 10680,
@@ -597,8 +615,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/808',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/808',
+    url: 'https://vidlink.pro/movie/808',
+    embedUrl: 'https://vidlink.pro/movie/808',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/2yYP0PQjG8zVq5ne2hm0T8O4W.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/i0n4c0R01e4O5gH9tN4i3w1n5v.jpg',
     duration: 5400,
@@ -619,8 +637,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/129',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/129',
+    url: 'https://vidlink.pro/movie/129',
+    embedUrl: 'https://vidlink.pro/movie/129',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/393mh1AJ0GYWVD7Desq9KkFaBqH.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/Ab8mkHmkYADjU7wQiOkia9BzGvS.jpg',
     duration: 7500,
@@ -641,8 +659,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/372058',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/372058',
+    url: 'https://vidlink.pro/movie/372058',
+    embedUrl: 'https://vidlink.pro/movie/372058',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/q719jXXEzOoYaps6q2P6eGHstqz.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/dIWwZW7dJJ1747ezm04N4whH0U2.jpg',
     duration: 6420,
@@ -663,8 +681,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'trending',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/movie/635302',
-    embedUrl: 'https://player.autoembed.cc/embed/movie/635302',
+    url: 'https://vidlink.pro/movie/635302',
+    embedUrl: 'https://vidlink.pro/movie/635302',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/h8Rb9gBr48ODigYjvZzSkYAGRB0.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/xPpXYnCWcuNm7alZT0Xte5TcbM5.jpg',
     duration: 7020,
@@ -687,8 +705,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/66732/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/66732/1/1',
+    url: 'https://vidlink.pro/tv/66732/1/1',
+    embedUrl: 'https://vidlink.pro/tv/66732/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/49WJfeN0moxb9IPfGn8AIqMGskD.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/56v2KjBlU4XaOv9rVYEQypROD7P.jpg',
     duration: 3300,
@@ -711,8 +729,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/1396/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/1396/1/1',
+    url: 'https://vidlink.pro/tv/1396/1/1',
+    embedUrl: 'https://vidlink.pro/tv/1396/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/ztkUQFLlC19CCMYHW9o1zWhJRNq.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/tsRy63Mu5cu8etL1X7ZLyf7UP1M.jpg',
     duration: 3000,
@@ -735,8 +753,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/1399/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/1399/1/1',
+    url: 'https://vidlink.pro/tv/1399/1/1',
+    embedUrl: 'https://vidlink.pro/tv/1399/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/1XS1oqL89opfnbLl8WnZY1O1uJx.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/2OMB0ynKlyIenMJWI2Dy9IWT4c.jpg',
     duration: 3400,
@@ -759,8 +777,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/100088/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/100088/1/1',
+    url: 'https://vidlink.pro/tv/100088/1/1',
+    embedUrl: 'https://vidlink.pro/tv/100088/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/uKvVjHNqB5VmOrdxqAt2V7J9AhP.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/uDgy6hyPd82kOHh6I95FLtLnj6p.jpg',
     duration: 3600,
@@ -783,8 +801,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/94605/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/94605/1/1',
+    url: 'https://vidlink.pro/tv/94605/1/1',
+    embedUrl: 'https://vidlink.pro/tv/94605/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/fqldf2t8ztc9aiwn397Fvd247Gs.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/hT3tlwD835n962s50sT1q5qS4F.jpg',
     duration: 2700,
@@ -807,8 +825,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/37854/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/37854/1/1',
+    url: 'https://vidlink.pro/tv/37854/1/1',
+    embedUrl: 'https://vidlink.pro/tv/37854/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/cMD9Ygz11zjJzAovURpO75Qg7rT.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/4Mt7WHox67vIKnWjuLFRA6HGGo5.jpg',
     duration: 1440,
@@ -831,8 +849,8 @@ export const BUILTIN_TMDB_CATALOG: MediaItem[] = [
     category: 'series',
     type: 'embed',
     server: 1,
-    url: 'https://player.autoembed.cc/embed/tv/1429/1/1',
-    embedUrl: 'https://player.autoembed.cc/embed/tv/1429/1/1',
+    url: 'https://vidlink.pro/tv/1429/1/1',
+    embedUrl: 'https://vidlink.pro/tv/1429/1/1',
     thumbnailUrl: 'https://image.tmdb.org/t/p/w500/hTP1DtLGFamjfu8WqjnuQdP1n4i.jpg',
     backdropUrl: 'https://image.tmdb.org/t/p/original/y4aqpA7F5u4J2Uu3Kz0m6G8d.jpg',
     duration: 1500,

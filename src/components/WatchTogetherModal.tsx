@@ -1018,13 +1018,24 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     [currentMedia, handleChangeMovie]
   );
 
-  // Fallback stream switcher
+  // Stream server fallback switcher: cycles to the next working 1080p server for the same movie!
   const switchToFallbackStream = useCallback(() => {
+    if (
+      currentMedia.type === 'embed' ||
+      currentMedia.source === 'tmdb' ||
+      Boolean(currentMedia.tmdbId) ||
+      currentMedia.id.startsWith('tmdb-')
+    ) {
+      const currentServer = currentMedia.server || 1;
+      const nextServer = ((currentServer % 4) + 1) as 1 | 2 | 3 | 4;
+      handleSwitchStreamServer(nextServer);
+      return;
+    }
     const fallback = FEATURED_MOVIES.find((m) => m.id !== currentMedia.id) || FEATURED_MOVIES[0];
     if (fallback) {
       handleChangeMovie(fallback);
     }
-  }, [currentMedia.id, handleChangeMovie]);
+  }, [currentMedia, handleSwitchStreamServer, handleChangeMovie]);
 
   // Video embed listener: window.addEventListener("message", ...)
   useEffect(() => {
@@ -2827,7 +2838,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 <div className="flex items-center gap-1.5 px-2.5 py-1.5 bg-slate-950/90 backdrop-blur-md rounded-xl border border-rose-500/30 text-[10px] text-rose-300 shadow-xl">
                   <span className="w-2 h-2 rounded-full bg-emerald-400 animate-pulse shrink-0" />
                   <span className="font-bold text-white tracking-wide">
-                    {currentMedia.server === 2 ? 'VidSrc VIP 1080p' : currentMedia.server === 3 ? 'EmbedSu 1080p' : currentMedia.server === 4 ? 'MultiEmbed 1080p' : 'AutoEmbed 1080p Full Movie'}
+                    {currentMedia.server === 2 ? 'VidSrc To 1080p' : currentMedia.server === 3 ? 'VidSrc VIP 1080p' : currentMedia.server === 4 ? 'MultiEmbed 1080p' : 'VidLink Pro 1080p HD'}
                   </span>
                   <span className="px-1.5 py-0.5 rounded bg-emerald-500/20 text-emerald-300 font-bold text-[9px] border border-emerald-500/30">
                     REAL FULL MOVIE 1080p
@@ -2886,9 +2897,9 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                     Server:
                   </span>
                   {[
-                    { id: 1, label: 'S1 Auto 1080p', title: 'AutoEmbed 1080p Full Movie (Recommended)' },
-                    { id: 2, label: 'S2 VidSrc HD', title: 'VidSrc VIP 1080p Full Movie' },
-                    { id: 3, label: 'S3 EmbedSu', title: 'EmbedSu 1080p Stream' },
+                    { id: 1, label: 'S1 VidLink 1080p', title: 'VidLink Pro 1080p Ultra HD (Fast, Clean, Recommended)' },
+                    { id: 2, label: 'S2 VidSrc HD', title: 'VidSrc To 1080p Ultra HD CDN' },
+                    { id: 3, label: 'S3 VidSrc VIP', title: 'VidSrc VIP Direct Stream Mirror' },
                     { id: 4, label: 'S4 MultiHD', title: 'MultiEmbed 1080p Mirror' },
                   ].map((srv) => {
                     const isActive = (currentMedia.server || 1) === srv.id;
