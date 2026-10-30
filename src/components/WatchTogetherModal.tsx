@@ -1068,6 +1068,45 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
     [currentMedia, handleChangeMovie]
   );
 
+  const [isConvertingToFullMovie, setIsConvertingToFullMovie] = useState(false);
+
+  // Switch from YouTube video to real 1080p full Hollywood movie / series on TMDB
+  const handleWatchFullMovieFromYouTube = useCallback(
+    async (customTitle?: string) => {
+      setIsConvertingToFullMovie(true);
+      try {
+        const rawTitle = customTitle || currentMedia.title || '';
+        // Strip common YouTube fluff: "Official Trailer", "Teaser", "Clip", "4K", "(2024)", "Ending Explained", etc.
+        const cleaned = rawTitle
+          .replace(/\b(official\s+)?(trailer|teaser|clip|scene|tv\s*spot|featurette|behind\s+the\s+scenes|review|reaction|ending\s+explained|recap)\b/gi, '')
+          .replace(/\b(4k|1080p|720p|hd|uhd|ultra\s+hd|imax|extended|remastered)\b/gi, '')
+          .replace(/\[[^\]]*\]/g, '')
+          .replace(/\([^\)]*trailer[^\)]*\)/gi, '')
+          .replace(/\b(full\s+movie|movie)\b/gi, '')
+          .replace(/[|•–—\-:].*$/g, '')
+          .trim();
+
+        const query = cleaned || rawTitle;
+        const tmdbResults = await searchTmdbMovies(query);
+        if (tmdbResults && tmdbResults.length > 0) {
+          handleChangeMovie(tmdbResults[0]);
+          setSelectedCategory('tmdb');
+        } else {
+          setSelectedCategory('tmdb');
+          setSearchQuery(query);
+          setIsPlayerActive(false);
+          handlePerformSearch(query);
+        }
+      } catch (err) {
+        console.warn('Could not switch YouTube to TMDB movie:', err);
+        filterByCategory('tmdb');
+      } finally {
+        setIsConvertingToFullMovie(false);
+      }
+    },
+    [currentMedia.title, handleChangeMovie]
+  );
+
   // Stream server fallback switcher: cycles to the next working 1080p server for the same movie!
   const switchToFallbackStream = useCallback(() => {
     if (
@@ -1081,11 +1120,18 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       handleSwitchStreamServer(nextServer);
       return;
     }
+
+    // If current media is a YouTube video, convert to the real 1080p movie on TMDB!
+    if (currentMedia.type === 'youtube' || Boolean(ytId)) {
+      handleWatchFullMovieFromYouTube();
+      return;
+    }
+
     const fallback = FEATURED_MOVIES.find((m) => m.id !== currentMedia.id) || FEATURED_MOVIES[0];
     if (fallback) {
       handleChangeMovie(fallback);
     }
-  }, [currentMedia, handleSwitchStreamServer, handleChangeMovie]);
+  }, [currentMedia, ytId, handleSwitchStreamServer, handleChangeMovie, handleWatchFullMovieFromYouTube]);
 
   // Video embed listener: window.addEventListener("message", ...)
   useEffect(() => {
@@ -1188,8 +1234,23 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
           )
         );
       } else if (selectedCategory === 'youtube') {
-        const ytResults = await searchYouTubeDirect(trimmed);
-        setSearchResults(ytResults);
+        // Multi-Source Search in YouTube Mode:
+        // Search both YouTube direct videos and TMDB 1080p cinema catalog simultaneously.
+        // If a real TMDB full movie matches the query (e.g. Avatar, Titanic, Inception),
+        // prioritize it at the top so the user can stream the real 1080p film with 1 click!
+        const [ytResults, tmdbMatches] = await Promise.all([
+          searchYouTubeDirect(trimmed),
+          searchTmdbMovies(trimmed).catch(() => []),
+        ]);
+        if (tmdbMatches && tmdbMatches.length > 0) {
+          const enhancedTmdb = tmdbMatches.slice(0, 3).map((m) => ({
+            ...m,
+            badge: isSeriesItem(m) ? '⭐ 1080p Series (Full Episodes)' : '⭐ 1080p Full Movie (No Trailers)',
+          }));
+          setSearchResults([...enhancedTmdb, ...ytResults]);
+        } else {
+          setSearchResults(ytResults);
+        }
       } else {
         // Multi-Source Search (Server Proxy -> TMDB Direct -> Public iTunes & TVMaze -> 100+ Catalog)
         const tmdbResults = await searchTmdbMovies(trimmed);
@@ -1261,8 +1322,24 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
       setIsSearching(true);
       try {
         const query = searchQuery.trim() || 'trending music video relax 4k';
-        const ytResults = await searchYouTubeDirect(query);
-        setSearchResults(ytResults);
+        if (searchQuery.trim()) {
+          const [ytResults, tmdbMatches] = await Promise.all([
+            searchYouTubeDirect(query),
+            searchTmdbMovies(searchQuery.trim()).catch(() => []),
+          ]);
+          if (tmdbMatches && tmdbMatches.length > 0) {
+            const enhancedTmdb = tmdbMatches.slice(0, 3).map((m) => ({
+              ...m,
+              badge: isSeriesItem(m) ? '⭐ 1080p Series (Full Episodes)' : '⭐ 1080p Full Movie (No Trailers)',
+            }));
+            setSearchResults([...enhancedTmdb, ...ytResults]);
+          } else {
+            setSearchResults(ytResults);
+          }
+        } else {
+          const ytResults = await searchYouTubeDirect(query);
+          setSearchResults(ytResults);
+        }
       } catch (err) {
         console.warn('YouTube category error:', err);
       } finally {
@@ -1734,6 +1811,9 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
           >
             <span className="w-2 h-2 rounded-full bg-red-400 animate-pulse" />
             <span>🔴 YouTube</span>
+            <span className="text-[10px] px-1.5 py-0.2 bg-black/40 rounded-md font-mono text-red-200">
+              Web & Clips
+            </span>
           </button>
 
           {watchlist.length > 0 && (
@@ -1934,6 +2014,32 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
         </div>
       ) : selectedCategory === 'youtube' ? (
         <div className="space-y-2.5 bg-slate-900/60 p-3 sm:p-4 rounded-2xl border border-slate-800/80">
+          {/* YouTube vs Full 1080p Movie Guidance Banner */}
+          <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 bg-gradient-to-r from-red-950/60 via-slate-900/80 to-rose-950/60 rounded-xl border border-red-500/30">
+            <div className="flex items-start sm:items-center gap-2.5">
+              <div className="p-2 rounded-lg bg-red-600/20 border border-red-500/40 text-red-400 shrink-0">
+                <Film className="w-4 h-4" />
+              </div>
+              <div>
+                <div className="flex items-center gap-2">
+                  <span className="text-xs font-bold text-white">YouTube Web Mode</span>
+                  <span className="text-[10px] px-1.5 py-0.5 rounded bg-amber-500/20 text-amber-300 border border-amber-500/30 font-medium">Clips & Trailers</span>
+                </div>
+                <p className="text-[11px] text-slate-300 mt-0.5">
+                  Looking for the complete Hollywood blockbuster in <strong>1080p Ultra HD</strong> without trailers? Switch to TMDB Cinema.
+                </p>
+              </div>
+            </div>
+            <button
+              type="button"
+              onClick={() => filterByCategory('tmdb')}
+              className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 to-pink-600 hover:from-rose-500 hover:to-pink-500 text-white text-xs font-bold flex items-center justify-center gap-1.5 shadow-lg shadow-rose-600/30 shrink-0 cursor-pointer transition active:scale-95"
+            >
+              <Film className="w-3.5 h-3.5" />
+              <span>Switch to TMDB Cinema (1080p HD)</span>
+            </button>
+          </div>
+
           <form
             onSubmit={(e) => {
               e.preventDefault();
@@ -1951,7 +2057,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 type="text"
                 value={searchQuery}
                 onChange={(e) => handleSearchInputChange(e.target.value)}
-                placeholder="Search YouTube (e.g. Music, Podcasts, Trailers, Gaming, Documentaries, Lofi)..."
+                placeholder="Search YouTube (or type any movie name to stream full 1080p HD)..."
                 className="w-full pl-9 pr-8 py-2.5 bg-slate-950 border border-slate-800 rounded-xl text-xs text-white placeholder:text-slate-500 focus:outline-none focus:border-red-500"
               />
               {searchQuery && (
@@ -1977,6 +2083,16 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
               >
                 {isSearching ? <Loader2 className="w-3.5 h-3.5 animate-spin" /> : <Search className="w-3.5 h-3.5" />}
                 <span>Search YouTube</span>
+              </button>
+
+              <button
+                type="button"
+                onClick={() => filterByCategory('tmdb')}
+                className="px-3 py-2.5 bg-slate-950 hover:bg-slate-800 text-rose-300 hover:text-white text-xs font-semibold rounded-xl border border-slate-800 flex items-center justify-center gap-1.5 transition cursor-pointer shrink-0"
+                title="Search TMDB for real 1080p full movies instead"
+              >
+                <Film className="w-3.5 h-3.5 text-rose-400" />
+                <span className="hidden sm:inline">1080p Movies</span>
               </button>
 
               <button
@@ -2168,8 +2284,22 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
 
               <div className="relative z-10 p-6 sm:p-10 max-w-xl flex flex-col justify-center space-y-3">
                 <div className="flex items-center gap-2">
-                  <span className="px-2.5 py-0.5 rounded bg-emerald-600 text-white font-bold text-[10px] tracking-wider uppercase shadow">
-                    REAL FULL MOVIE (1080p HD)
+                  <span className={`px-2.5 py-0.5 rounded font-bold text-[10px] tracking-wider uppercase shadow ${
+                    searchResults[0].source === 'tmdb' || Boolean(searchResults[0].tmdbId)
+                      ? isSeriesItem(searchResults[0])
+                        ? 'bg-purple-600 text-white'
+                        : 'bg-emerald-600 text-white'
+                      : searchResults[0].type === 'youtube' || searchResults[0].source === 'youtube'
+                      ? 'bg-red-600 text-white'
+                      : 'bg-indigo-600 text-white'
+                  }`}>
+                    {searchResults[0].source === 'tmdb' || Boolean(searchResults[0].tmdbId)
+                      ? isSeriesItem(searchResults[0])
+                        ? 'REAL FULL TV SERIES (1080p HD)'
+                        : 'REAL FULL MOVIE (1080p HD)'
+                      : searchResults[0].type === 'youtube' || searchResults[0].source === 'youtube'
+                      ? '🔴 YOUTUBE WEB VIDEO'
+                      : 'POPCORN CLASSIC (HD)'}
                   </span>
                   <span className="text-amber-400 font-bold text-xs">★ {searchResults[0].rating || '9.4/10'}</span>
                   <span className="text-slate-300 text-xs">{searchResults[0].year || '2026'}</span>
@@ -2183,15 +2313,43 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   {searchResults[0].description || searchResults[0].genre || 'Stream in ultra HD cinema quality together with your partner in real-time sync.'}
                 </p>
 
-                <div className="flex items-center gap-3 pt-2">
-                  <button
-                    type="button"
-                    onClick={() => handleChangeMovie(searchResults[0])}
-                    className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-red-600/40 active:scale-95 transition cursor-pointer"
-                  >
-                    <Play className="w-4 h-4 fill-white" />
-                    <span>Watch Full Movie (1080p)</span>
-                  </button>
+                <div className="flex flex-wrap items-center gap-3 pt-2">
+                  {searchResults[0].type === 'youtube' || searchResults[0].source === 'youtube' ? (
+                    <>
+                      <button
+                        type="button"
+                        onClick={() => handleWatchFullMovieFromYouTube(searchResults[0].title)}
+                        className="px-6 py-3 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-rose-600/40 active:scale-95 transition cursor-pointer"
+                        title="Search and stream the complete commercial film in 1080p HD instead of a YouTube clip"
+                      >
+                        <Film className="w-4 h-4 fill-white" />
+                        <span>🎬 Stream Full Movie in 1080p HD</span>
+                      </button>
+                      <button
+                        type="button"
+                        onClick={() => handleChangeMovie(searchResults[0])}
+                        className="px-5 py-3 rounded-xl bg-red-600/90 hover:bg-red-600 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-md active:scale-95 transition cursor-pointer"
+                      >
+                        <Play className="w-4 h-4 fill-white" />
+                        <span>Play YouTube Clip</span>
+                      </button>
+                    </>
+                  ) : (
+                    <button
+                      type="button"
+                      onClick={() => {
+                        if (isSeriesItem(searchResults[0])) {
+                          setSeriesModalItem(searchResults[0]);
+                        } else {
+                          handleChangeMovie(searchResults[0]);
+                        }
+                      }}
+                      className="px-6 py-3 rounded-xl bg-red-600 hover:bg-red-700 text-white font-bold text-xs sm:text-sm flex items-center gap-2 shadow-lg shadow-red-600/40 active:scale-95 transition cursor-pointer"
+                    >
+                      <Play className="w-4 h-4 fill-white" />
+                      <span>{isSeriesItem(searchResults[0]) ? 'Choose Episode (1080p)' : 'Watch Full Movie (1080p)'}</span>
+                    </button>
+                  )}
                   <button
                     type="button"
                     onClick={() => handleToggleWatchlist(searchResults[0])}
@@ -2243,11 +2401,22 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
 
                   {/* Play Button Overlay (Visible on Touch, High-Intent on Hover) */}
                   <div className="absolute inset-0 flex items-center justify-center opacity-80 sm:opacity-0 sm:group-hover:opacity-100 transition-opacity bg-black/40 backdrop-blur-[2px]">
-                    <div className={`px-3 py-1.5 rounded-full ${isSeries ? 'bg-gradient-to-r from-purple-600 to-pink-600' : 'bg-rose-600/90 hover:bg-rose-500'} text-white flex items-center gap-1.5 shadow-xl shadow-rose-600/40 transform scale-90 group-hover:scale-100 transition-transform text-xs font-bold`}>
+                    <div className={`px-3 py-1.5 rounded-full ${
+                      isSeries
+                        ? 'bg-gradient-to-r from-purple-600 to-pink-600'
+                        : movie.type === 'youtube' || movie.source === 'youtube'
+                        ? 'bg-red-600/90 hover:bg-red-500'
+                        : 'bg-rose-600/90 hover:bg-rose-500'
+                    } text-white flex items-center gap-1.5 shadow-xl shadow-rose-600/40 transform scale-90 group-hover:scale-100 transition-transform text-xs font-bold`}>
                       {isSeries ? (
                         <>
                           <Layers className="w-3.5 h-3.5" />
                           <span>Choose Episode</span>
+                        </>
+                      ) : movie.type === 'youtube' || movie.source === 'youtube' ? (
+                        <>
+                          <Play className="w-4 h-4 fill-white ml-0.5" />
+                          <span>Play YouTube Video</span>
                         </>
                       ) : (
                         <>
@@ -2277,7 +2446,7 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                       </span>
                     ) : (
                       <span className="bg-red-950/90 border border-red-500/40 text-[9px] font-bold text-red-300 px-2 py-0.5 rounded-md shadow-sm">
-                        🔴 Full HD Stream
+                        🔴 YouTube Video
                       </span>
                     )}
                   </div>
@@ -2375,6 +2544,33 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                         <Layers className="w-3.5 h-3.5 text-purple-200" />
                         <span>{isActive ? `S${movie.season || 1}:E${movie.episode || 1} • Episodes` : 'Choose Episode'}</span>
                       </button>
+                    ) : movie.type === 'youtube' || movie.source === 'youtube' ? (
+                      <div className="flex items-center gap-1.5 w-full">
+                        <button
+                          type="button"
+                          onClick={() => handleChangeMovie(movie)}
+                          className={`flex-1 py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-sm ${
+                            isActive
+                              ? 'bg-red-500 text-white shadow-red-500/30'
+                              : 'bg-red-600 hover:bg-red-500 text-white shadow-red-600/20'
+                          }`}
+                        >
+                          <Play className="w-3 h-3 fill-current" />
+                          <span>{isActive ? 'Playing' : 'Play Clip'}</span>
+                        </button>
+                        <button
+                          type="button"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            handleWatchFullMovieFromYouTube(movie.title);
+                          }}
+                          className="py-1.5 px-2 rounded-xl text-xs font-bold flex items-center justify-center gap-1 transition cursor-pointer shadow-sm bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white active:scale-95 shrink-0"
+                          title="Search and stream full 1080p movie on TMDB"
+                        >
+                          <Film className="w-3 h-3 text-amber-200" />
+                          <span>1080p Movie</span>
+                        </button>
+                      </div>
                     ) : (
                       <button
                         type="button"
@@ -2772,23 +2968,28 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 }}
               />
 
-              {/* Fallback / YouTube bypass helper overlay */}
-              <div className="absolute top-3 right-3 z-30">
+              {/* YouTube to Full 1080p Movie Switcher */}
+              <div className="absolute top-3 right-3 z-30 flex items-center gap-2">
                 <button
                   type="button"
-                  onClick={() => switchToFallbackStream()}
-                  className="px-3 py-1.5 rounded-xl bg-rose-600 hover:bg-rose-500 text-white text-xs font-bold shadow-2xl border border-rose-400/40 flex items-center gap-1.5 transition cursor-pointer"
-                  title="Switch to guaranteed HD cinema stream"
+                  onClick={() => handleWatchFullMovieFromYouTube()}
+                  disabled={isConvertingToFullMovie}
+                  className="px-3.5 py-1.5 rounded-xl bg-gradient-to-r from-rose-600 via-pink-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-2xl border border-rose-400/50 flex items-center gap-1.5 transition-all hover:scale-105 active:scale-95 cursor-pointer"
+                  title="Stream the real commercial Hollywood movie in 1080p Ultra HD instead of YouTube"
                 >
-                  <RefreshCw className="w-3.5 h-3.5 animate-spin" />
-                  <span>🎬 Switch to HD Stream</span>
+                  {isConvertingToFullMovie ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Film className="w-3.5 h-3.5 text-amber-200" />
+                  )}
+                  <span>🎬 Stream Full Movie (1080p HD)</span>
                 </button>
               </div>
               {/* YouTube Paused Overlay */}
               {!isPlaying && (
                 <div
                   onClick={() => togglePlayPause(true)}
-                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/50 backdrop-blur-xs cursor-pointer z-10 animate-in fade-in select-none"
+                  className="absolute inset-0 flex flex-col items-center justify-center bg-black/60 backdrop-blur-xs cursor-pointer z-10 animate-in fade-in select-none p-4"
                   title="Click to resume playback"
                 >
                   <button
@@ -2797,10 +2998,21 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                   >
                     <Play className="w-8 h-8 ml-1 fill-white" />
                   </button>
-                  <div className="px-4 py-1.5 rounded-full bg-slate-950/90 border border-slate-700 text-white text-xs font-semibold shadow-xl flex items-center gap-2">
+                  <div className="px-4 py-1.5 rounded-full bg-slate-950/90 border border-slate-700 text-white text-xs font-semibold shadow-xl flex items-center gap-2 mb-3">
                     <Pause className="w-3.5 h-3.5 text-rose-400" />
                     <span>Paused • Click or Press Space to Resume</span>
                   </div>
+                  <button
+                    type="button"
+                    onClick={(e) => {
+                      e.stopPropagation();
+                      handleWatchFullMovieFromYouTube();
+                    }}
+                    className="px-4 py-2 rounded-xl bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white text-xs font-bold shadow-xl border border-rose-400/40 flex items-center gap-1.5 transition cursor-pointer"
+                  >
+                    <Film className="w-3.5 h-3.5 text-amber-200" />
+                    <span>Want the Real 1080p Full Movie? Stream on TMDB Cinema</span>
+                  </button>
                 </div>
               )}
             </div>
@@ -3564,6 +3776,25 @@ export const WatchTogetherModal: React.FC<WatchTogetherModalProps> = ({
                 <Film className="w-3.5 h-3.5" />
                 <span>{showCatalog ? 'Hide Movies' : 'Browse Movies'}</span>
               </button>
+
+              {/* If YouTube is playing: Quick Stream Real Full Movie in 1080p */}
+              {(Boolean(ytId) || currentMedia.type === 'youtube') && (
+                <button
+                  type="button"
+                  id="btn-movie-stream-1080p-action"
+                  onClick={() => handleWatchFullMovieFromYouTube()}
+                  disabled={isConvertingToFullMovie}
+                  className="px-3 py-1.5 rounded-xl text-xs font-bold border border-rose-400/50 bg-gradient-to-r from-rose-600 to-amber-600 hover:from-rose-500 hover:to-amber-500 text-white flex items-center gap-1.5 transition-all shadow-md active:scale-95 cursor-pointer"
+                  title="Stream the real 1080p Hollywood film on TMDB instead of YouTube"
+                >
+                  {isConvertingToFullMovie ? (
+                    <Loader2 className="w-3.5 h-3.5 animate-spin" />
+                  ) : (
+                    <Film className="w-3.5 h-3.5 text-amber-200" />
+                  )}
+                  <span>Stream Real Movie 1080p</span>
+                </button>
+              )}
 
               {/* If TV Series: Browse All Seasons & Episodes */}
               {isSeriesItem(currentMedia) && (
